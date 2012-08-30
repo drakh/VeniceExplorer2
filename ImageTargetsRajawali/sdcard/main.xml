@@ -1,0 +1,6 @@
+<!--?xml version="1.0" encoding="UTF-8"?-->
+<venice version="0.1" startx="0" starty="0" startz="0" da="30" server="http://someserver" debug="false">
+	<project name="PAVILON" description="pavilon">
+		<object interactive="false" model="pavilon_obj" texture="pavilon.jpg" doublesided="1"></object>
+	</project>
+</venice>

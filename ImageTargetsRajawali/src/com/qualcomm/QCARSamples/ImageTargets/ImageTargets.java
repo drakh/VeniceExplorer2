@@ -58,7 +58,7 @@ public class ImageTargets extends Activity
 {
 	// setup
 	private String					filename						= "main.xml";
-	private String					dirname							= "VeniceViewer";
+	private String					dirname							= "VeniceViewer2";
 	private TextView				rotZ;
 	private ArrayList<ProjectLevel>	vProjects;
 	private LinearLayout			ll;
