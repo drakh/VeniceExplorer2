@@ -255,8 +255,8 @@ Java_com_qualcomm_QCARSamples_ImageTargets_ImageTargetsRenderer_renderFrame2(JNI
 void configureVideoBackground() {
     // Get the default video mode:
     QCAR::CameraDevice& cameraDevice = QCAR::CameraDevice::getInstance();
-    QCAR::VideoMode videoMode = cameraDevice.
-                                getVideoMode(QCAR::CameraDevice::MODE_DEFAULT);
+    //QCAR::VideoMode videoMode = cameraDevice.getVideoMode(QCAR::CameraDevice::MODE_DEFAULT);
+    QCAR::VideoMode videoMode = cameraDevice.getVideoMode(QCAR::CameraDevice::MODE_OPTIMIZE_QUALITY);
 
 
     // Configure the video background

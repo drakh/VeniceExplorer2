@@ -50,7 +50,6 @@ public class ObjectsRenderer extends RajawaliRenderer
 	{
 		super(context);
 		RajLog.enableDebug(false);
-		
 		/* setup markers position*/
 		MarkerPlane c=new MarkerPlane(1,1,1,1);
 		c.setRotX(180);
@@ -72,6 +71,13 @@ public class ObjectsRenderer extends RajawaliRenderer
 		c.setRotY(180);
 		mm4=c.getModelViewMatrix();
 		c=null;
+		
+		c=new MarkerPlane(1,1,1,1);
+		c.setPosition(new Number3D(-3.354f, 2.711f, 8.716));
+		c.setRotX(180);
+		c.setRotY(180);
+		mm3=c.getModelViewMatrix();
+		c=null;
 		System.gc();
 	}
 
@@ -80,26 +86,9 @@ public class ObjectsRenderer extends RajawaliRenderer
 		mTextureManager = new TextureManager();
 		mCamera.setFarPlane(50f);
 		mCamera.setNearPlane(0.1f);
-		mCamera.setFieldOfView(120);
 		mCamera.setY(1.4f);
-
 		LoadObjects(ps.get(0));
-
-		
-
-		
-		c3=new MarkerPlane(1,1,1,1);
-		c3.setPosition(new Number3D(-8.716+0.1f, 2.711f, 3.354f));
-		c3.setRotX(90);
-		c3.setRotX(180);
-		c3.setMaterial(new SimpleMaterial());
-		c3.setOrientation();
-		mm3=c3.getModelViewMatrix();
-		addChild(c3);
-		
-
-
-
+		System.gc();
 	}
 
 	public void setPosition(String n, float[] CM)
@@ -135,20 +124,24 @@ public class ObjectsRenderer extends RajawaliRenderer
 		{
 			mCamera.setRotX(180+pitch);
 			mCamera.setRotY(-1*yaw);
-			mCamera.setPosition(new Number3D((mCamMatrix[12]),1.4f,-1*mCamMatrix[14]));
+			mCamera.setRotZ(0);
+			mCamera.setPosition(new Number3D(mCamMatrix[12],1.4f,-1*mCamMatrix[14]));
 		}
 		else if(n.contentEquals("marker2") || n.contentEquals("marker1"))
 		{
-			mCamera.setRotX(180+pitch);
+			mCamera.setRotX(180-pitch);
 			mCamera.setRotY(-1*yaw+180);
-			mCamera.setPosition(new Number3D((-1*mCamMatrix[12]),1.4f,mCamMatrix[14]));
+			mCamera.setRotZ(0);
+			mCamera.setPosition(new Number3D(-1*mCamMatrix[12],1.4f,mCamMatrix[14]));
 		}
-		else if(n.contentEquals("marker4"))
+		else if(n.contentEquals("marker3"))
 		{
-			mCamera.setRotX(180+pitch);
-			mCamera.setRotY(-1*yaw);
-			mCamera.setPosition(new Number3D((mCamMatrix[12]),1.4f,-1*mCamMatrix[14]));
+			mCamera.setRotX(0);
+			mCamera.setRotY(-1*yaw-90);
+			mCamera.setRotZ(180+pitch);
+			mCamera.setPosition(new Number3D(mCamMatrix[14],1.4f,mCamMatrix[12]));
 		}
+		System.gc();
 	}
 
 	@Override
@@ -224,6 +217,6 @@ public class ObjectsRenderer extends RajawaliRenderer
 			p.getModels().get(i).setObj(obj);
 			*/
 		}
-		Log.d("objloader", "objects in scene:" + getNumChildren());
+		System.gc();
 	}
 }
