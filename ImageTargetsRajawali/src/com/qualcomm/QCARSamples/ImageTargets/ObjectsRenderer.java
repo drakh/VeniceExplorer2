@@ -37,10 +37,7 @@ public class ObjectsRenderer extends RajawaliRenderer
 	private ObjParser				mParser;
 	private TextureManager			mTextureManager;
 	private ArrayList<ProjectLevel>	ps;
-	private MarkerPlane c1;
-	private MarkerPlane c2;
 	private MarkerPlane c3;
-	private MarkerPlane c4;
 	private float[] mm1=new float[16];//marker 1 matrix
 	private float[] mm2=new float[16];//marker 2 matrix
 	private float[] mm3=new float[16];//marker 3 matrix
@@ -53,6 +50,29 @@ public class ObjectsRenderer extends RajawaliRenderer
 	{
 		super(context);
 		RajLog.enableDebug(false);
+		
+		/* setup markers position*/
+		MarkerPlane c=new MarkerPlane(1,1,1,1);
+		c.setRotX(180);
+		c.setRotY(180);
+		c.setPosition(new Number3D(-5.256f, 2.701f, 5.386f));
+		mm2=c.getModelViewMatrix();
+		c=null;
+		
+		c=new MarkerPlane(1,1,1,1);
+		c.setRotX(180);
+		c.setRotY(180);
+		c.setPosition(new Number3D(4.874f, 2.721f, 5.386f));
+		mm1=c.getModelViewMatrix();
+		c=null;
+		
+		c= new MarkerPlane(1,1,1,1);
+		c.setPosition(new Number3D(-2.224,2.651,5.384));
+		c.setRotX(180);
+		c.setRotY(180);
+		mm4=c.getModelViewMatrix();
+		c=null;
+		System.gc();
 	}
 
 	protected void initScene()
@@ -60,51 +80,31 @@ public class ObjectsRenderer extends RajawaliRenderer
 		mTextureManager = new TextureManager();
 		mCamera.setFarPlane(50f);
 		mCamera.setNearPlane(0.1f);
-		//mCamera.setFieldOfView(120);
-		//mCamera.setY(1.4f);
-		//mCamera.setLookAt(0f,1.4f,-5f);
+		mCamera.setFieldOfView(120);
+		mCamera.setY(1.4f);
 
 		LoadObjects(ps.get(0));
 
-		c1=new MarkerPlane(1,1,1,1);
-		c1.setRotX(180);
-		//c1.setRotY(180);
-		c1.setPosition(new Number3D(4.874f, 2.721f, -5.386f+0.1f));
-		c1.setMaterial(new SimpleMaterial());
-		mm1=c1.getModelViewMatrix();
-		addChild(c1);
 		
-		c2=new MarkerPlane(1,1,1,1);
-		c2.setRotX(180);
-		//c2.setRotY(180);
-		c2.setPosition(new Number3D(-5.256f, 2.701f, -5.386f+0.1f));
-		c2.setMaterial(new SimpleMaterial());
-		mm2=c2.getModelViewMatrix();
-		addChild(c2);
+
 		
 		c3=new MarkerPlane(1,1,1,1);
 		c3.setPosition(new Number3D(-8.716+0.1f, 2.711f, 3.354f));
+		c3.setRotX(90);
 		c3.setRotX(180);
-		c3.setRotY(-90);
 		c3.setMaterial(new SimpleMaterial());
 		c3.setOrientation();
 		mm3=c3.getModelViewMatrix();
 		addChild(c3);
 		
-		c4= new MarkerPlane(1,1,1,1);
-		c4.setPosition(new Number3D(2.224,2.651,(5.384-0.1f)));
-		c4.setMaterial(new SimpleMaterial());
-		c4.setRotX(180);
-		c4.setRotY(180);
-		mm4=c4.getModelViewMatrix();
-		addChild(c4);
+
 
 
 	}
 
 	public void setPosition(String n, float[] CM)
 	{
-	    if(n.contentEquals("marker1"))
+		if(n.contentEquals("marker1"))
 	    {
 	    	mm=mm1;
 	    }
@@ -128,13 +128,27 @@ public class ObjectsRenderer extends RajawaliRenderer
 		q.fromAxes(a_x,a_y,a_z);
 		float[] rm=new float[16];
 		q.toRotationMatrix(rm);
-		//mCamera.setOrientation(q);
-		mCamera.setRotationMatrix(rm);
-		//mCamMatrix[12]=0-mCamMatrix[12];
-		Log.d("Main:","x: "+mCamMatrix[12]);
-		Log.d("Main:","y: "+mCamMatrix[13]);
-		Log.d("Main:","z: "+mCamMatrix[14]);
-		mCamera.setPosition(new Number3D((mCamMatrix[12]),mCamMatrix[13],-1*mCamMatrix[14]));
+		float pitch=Math.round(Math.toDegrees(q.getPitch(false)));
+		float yaw=Math.round(Math.toDegrees(q.getYaw(false)));
+		float roll=Math.round(Math.toDegrees(q.getRoll(false)));
+		if(n.contentEquals("marker4"))
+		{
+			mCamera.setRotX(180+pitch);
+			mCamera.setRotY(-1*yaw);
+			mCamera.setPosition(new Number3D((mCamMatrix[12]),1.4f,-1*mCamMatrix[14]));
+		}
+		else if(n.contentEquals("marker2") || n.contentEquals("marker1"))
+		{
+			mCamera.setRotX(180+pitch);
+			mCamera.setRotY(-1*yaw+180);
+			mCamera.setPosition(new Number3D((-1*mCamMatrix[12]),1.4f,mCamMatrix[14]));
+		}
+		else if(n.contentEquals("marker4"))
+		{
+			mCamera.setRotX(180+pitch);
+			mCamera.setRotY(-1*yaw);
+			mCamera.setPosition(new Number3D((mCamMatrix[12]),1.4f,-1*mCamMatrix[14]));
+		}
 	}
 
 	@Override

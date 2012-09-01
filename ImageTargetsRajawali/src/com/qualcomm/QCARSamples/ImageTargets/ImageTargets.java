@@ -550,9 +550,8 @@ public class ImageTargets extends Activity
 						addContentView(mGlView2, new LayoutParams(
 								LayoutParams.FILL_PARENT,
 								LayoutParams.FILL_PARENT));
-						
 						// Start the camera:
-						//addContentView(ll);
+						// addContentView(ll);
 						updateApplicationStatus(APPSTATUS_CAMERA_RUNNING);
 					}
 				};
@@ -621,10 +620,9 @@ public class ImageTargets extends Activity
 		mRenderer2.setObjs(vProjects);
 		mGlView2.setRenderer(mRenderer2);
 		/*
-		ll = new LinearLayout(this);
-		ll.setOrientation(LinearLayout.VERTICAL);
-		ll.setGravity(Gravity.TOP);
-		*/
+		 * ll = new LinearLayout(this);
+		 * ll.setOrientation(LinearLayout.VERTICAL); ll.setGravity(Gravity.TOP);
+		 */
 
 	}
 
@@ -840,11 +838,10 @@ public class ImageTargets extends Activity
 			chsP.setText(vProjects.get(i).getName());
 			chsP.setClickable(false);
 			/*
-			chsP.setClickable(true);
-			MyClickListener myh = new MyClickListener(i, this);
-			chsP.setOnClickListener(myh);
-			*/
-			//ll.addView(chsP);
+			 * chsP.setClickable(true); MyClickListener myh = new
+			 * MyClickListener(i, this); chsP.setOnClickListener(myh);
+			 */
+			// ll.addView(chsP);
 		}
 	}
 
@@ -873,6 +870,6 @@ public class ImageTargets extends Activity
 
 	public void SelectProject(int w)
 	{
-		 //mRenderer2.showProject(w);
+		// mRenderer2.showProject(w);
 	}
 }

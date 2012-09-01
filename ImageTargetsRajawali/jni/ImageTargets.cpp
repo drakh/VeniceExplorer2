@@ -198,8 +198,8 @@ Java_com_qualcomm_QCARSamples_ImageTargets_ImageTargets_onQCARInitializedNative(
 
 	// Comment in to enable tracking of up to 2 targets simultaneously and
 	// split the work over multiple frames:
-	QCAR::setHint(QCAR::HINT_MAX_SIMULTANEOUS_IMAGE_TARGETS, 4);
-	QCAR::setHint(QCAR::HINT_IMAGE_TARGET_MULTI_FRAME_ENABLED, 1);
+	//QCAR::setHint(QCAR::HINT_MAX_SIMULTANEOUS_IMAGE_TARGETS, 4);
+	//QCAR::setHint(QCAR::HINT_IMAGE_TARGET_MULTI_FRAME_ENABLED, 1);
 }
 
 JNIEXPORT jboolean JNICALL
