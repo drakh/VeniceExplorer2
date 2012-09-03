@@ -404,7 +404,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	public void onSurfaceDestroyed()
 	{
 		// mMediaPlayer.release();
-		// super.onSurfaceDestroyed();
+		super.onSurfaceDestroyed();
 	}
 
 	public void showProject(int k)

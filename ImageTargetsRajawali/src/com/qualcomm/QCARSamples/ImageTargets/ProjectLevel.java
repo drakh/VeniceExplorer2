@@ -7,7 +7,7 @@ public class ProjectLevel
 	public String					projectName;
 	public ArrayList<ProjectObject>	objs;
 	public ArrayList<String>		Textures;
-	public String					htmlFile;
+	public String					htmlFile="";
 
 	ProjectLevel(String pn)
 	{

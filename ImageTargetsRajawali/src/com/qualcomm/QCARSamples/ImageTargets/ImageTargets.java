@@ -113,7 +113,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private ImageView				mSplashScreenView;
 	private Handler					mSplashScreenHandler;
 	public Handler mLoadingHandler;
-	private String tutorial;
+	private String tutorial="";
 	private Runnable				mSplashScreenRunnable;
 	private static final long		MIN_SPLASH_SCREEN_TIME			= 2000;
 	long							mSplashScreenStartTime			= 0;
@@ -1175,9 +1175,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 	{
 		ShowTutorial("file://"+Environment.getExternalStorageDirectory()+"/"+dirname+"/"+tutorial);
 	}
-	public void ShowProjectTutorial()
+	public void ShowProjectTutorial(int i)
 	{
-		
+		String f=vProjects.get(i).htmlFile;
+		ShowTutorial("file://"+Environment.getExternalStorageDirectory()+"/"+dirname+"/"+f);
 	}
 	public void ShowTutorial(String uri)
 	{
@@ -1201,7 +1202,15 @@ public class ImageTargets extends Activity implements SensorEventListener
 		}
 		else
 		{
+			if(mRenderer2.doLoad==false)
+			{
+				int c=mRenderer2.curProj;
+				ShowProjectTutorial(c);
+			}
+			else
+			{
 			ShowDefaultTutorial();
+			}
 		}
 	}
 	private class MyInfoClickListener implements OnClickListener
