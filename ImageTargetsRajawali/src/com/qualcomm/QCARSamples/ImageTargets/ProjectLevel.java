@@ -7,6 +7,7 @@ public class ProjectLevel
 	public String					projectName;
 	public ArrayList<ProjectObject>	objs;
 	public ArrayList<String>		Textures;
+	public String					htmlFile;
 
 	ProjectLevel(String pn)
 	{
@@ -14,7 +15,10 @@ public class ProjectLevel
 		objs = new ArrayList<ProjectObject>();
 		Textures = new ArrayList<String>();
 	}
-
+	public void setHtml(String n)
+	{
+		htmlFile=n;
+	}
 	public void addTexture(String tn)
 	{
 		if (!Textures.contains(tn))

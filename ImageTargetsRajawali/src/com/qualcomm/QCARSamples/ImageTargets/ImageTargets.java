@@ -43,6 +43,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.webkit.WebView;
 //matej
 import android.content.Intent;
 import android.content.Context;
@@ -77,6 +78,11 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private TextView mProjView;
 	private LinearLayout mLL;
 	private SensorManager			mSensorManager			= null;
+	private TextView mMenuBtn;
+	private TextView mInfoBtn;
+	private boolean MenuVisible=true;
+	private boolean InfoVisible=true;
+	private WebView InfoText;
 	private float[]					orientation=new float[3];
 	
 	// setup
@@ -107,6 +113,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private ImageView				mSplashScreenView;
 	private Handler					mSplashScreenHandler;
 	public Handler mLoadingHandler;
+	private String tutorial;
 	private Runnable				mSplashScreenRunnable;
 	private static final long		MIN_SPLASH_SCREEN_TIME			= 2000;
 	long							mSplashScreenStartTime			= 0;
@@ -313,8 +320,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		
 		/*menu*/
 		scrollContainer=new ScrollView(this);
-		ViewGroup.LayoutParams gui_p = new ViewGroup.LayoutParams(300, mScreenHeight-100);
-		scrollContainer.setLayoutParams(gui_p);
+		scrollContainer.setLayoutParams(new ViewGroup.LayoutParams(300, mScreenHeight-100));
 		scrollContainer.setY(50f);
 		mLL=new LinearLayout(this);
 		mLL.setOrientation(LinearLayout.VERTICAL);
@@ -325,6 +331,50 @@ public class ImageTargets extends Activity implements SensorEventListener
 		scrollContainer.addView(mLL);
 		mGUI.addView(scrollContainer);
 		
+		/* info text*/
+		InfoText=new WebView(this);
+		InfoText.setLayoutParams(new ViewGroup.LayoutParams(mScreenWidth-600, mScreenHeight-100));
+		InfoText.setY(50f);
+		InfoText.setX(300f);
+		InfoText.setBackgroundColor(Color.WHITE);
+		InfoText.setAlpha(0.5f);
+		mGUI.addView(InfoText);
+		
+		/*info button*/
+		mInfoBtn=new TextView(this);
+		mInfoBtn.setBackgroundResource(R.drawable.back_b);
+		mInfoBtn.setLayoutParams(new ViewGroup.LayoutParams(90, 25));
+		mInfoBtn.setText("Info");
+		mInfoBtn.setX(mScreenWidth-110);
+		mInfoBtn.setY(mScreenHeight-45);
+		mInfoBtn.setGravity(Gravity.RIGHT);
+		mInfoBtn.setTextColor(Color.DKGRAY);
+		mInfoBtn.setShadowLayer(2f, 2f, 2f, Color.LTGRAY);
+		mInfoBtn.setTextSize(14);
+		mInfoBtn.setPadding(0, 0, 10, 0);
+		mInfoBtn.setClickable(true);
+		MyInfoClickListener mic = new MyInfoClickListener();
+		mInfoBtn.setOnClickListener(mic);
+		mGUI.addView(mInfoBtn);
+		
+		/*menu button*/
+		mMenuBtn=new TextView(this);
+		mMenuBtn.setBackgroundResource(R.drawable.back_b);
+		mMenuBtn.setLayoutParams(new ViewGroup.LayoutParams(90, 25));
+		mMenuBtn.setText("Menu");
+		mMenuBtn.setX(10);
+		mMenuBtn.setY(15);
+		mMenuBtn.setGravity(Gravity.RIGHT);
+		mMenuBtn.setTextColor(Color.DKGRAY);
+		mMenuBtn.setShadowLayer(2f, 2f, 2f, Color.LTGRAY);
+		mMenuBtn.setTextSize(14);
+		mMenuBtn.setPadding(0, 0, 10, 0);
+		mMenuBtn.setClickable(true);
+		MyMMenuClickListener mmc=new MyMMenuClickListener();
+		mMenuBtn.setOnClickListener(mmc);
+		mGUI.addView(mMenuBtn);
+		
+		/* project name*/
 		mProjView=new TextView(this);
 		mProjView.setTextSize(24);
 		mProjView.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -334,6 +384,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mProjView.setPadding(10, 10, 0, 10);
 		mGUI.addView(mProjView);
 		
+		/* splash screen*/
 		mSplashScreenImageResource = R.drawable.splash_screen_image_targets;
 		mQCARFlags = getInitializationFlags();
 		
@@ -604,11 +655,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 						mRenderer.mIsActive = true;
 						mLayout.addView(mGlView);
 						mLayout.addView(mGlView2);
-						mLayout.addView(mGUI);
-						
-						//mLayout.addView(scrollContainer);
-						//mLayout.addView(mProjView);
-						
+						mLayout.addView(mGUI);						
 						updateApplicationStatus(APPSTATUS_CAMERA_RUNNING);
 					}
 				};
@@ -656,21 +703,13 @@ public class ImageTargets extends Activity implements SensorEventListener
 			@Override
 			public void onReceive(Context context, Intent intent) {
 				hideGUI();
-				
-				//hide whole GUI container
-				//ll.setVisibility(View.GONE);
-				//gui.setVisibility(View.GONE);
-				//infotext.setVisibility(View.GONE);
-				//tutorialbtn.setVisibility(View.GONE);
-				//tutorial.setVisibility(View.GONE);
-				
+				HideTutorial();
 			}
 		};
 		batteryUnplugged=new BroadcastReceiver() {
 			@Override
 			public void onReceive(Context context, Intent intent) {
-				showGUI();
-				
+				showGUI();				
 				/*
 				steps=0;
 				cam_x = (float) -6.414;
@@ -689,6 +728,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 	public void showGUI()
 	{
 		mGUI.setVisibility(View.VISIBLE);
+		ShowDefaultTutorial();
+		HideMenu();
 	}
 	public void hideGUI()
 	{
@@ -845,17 +886,17 @@ public class ImageTargets extends Activity implements SensorEventListener
 				Log.d("main", nodeName);
 				if (nodeName.contentEquals("venice"))
 				{
-					/*
 					for (int k = 0; k < xpp.getAttributeCount(); k++)
 					{
 						String an = xpp.getAttributeName(k);
 						String av = xpp.getAttributeValue(k);
 						
-						 if (an.contentEquals("da")) {
-						 da=Integer.parseInt(av); }
+						 if (an.contentEquals("htmlfile")) 
+						 {
+							 tutorial=av; 
+						 }
 						
 					}
-					*/
 				}
 				else if (nodeName.contentEquals("project"))
 				{
@@ -866,6 +907,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 						if (an.contentEquals("name"))
 						{
 							vProjects.add(jj, new ProjectLevel(av));
+						}
+						else if(an.contentEquals("htmlfile"))
+						{
+							vProjects.get(jj).setHtml(av);
 						}
 
 					}
@@ -936,6 +981,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 	public void SelectProject(int w)
 	{
 		//scrollContainer.setVisibility(View.GONE);
+		HideMenu();
+		HideTutorial();
 		mRenderer2.showProject(w);
 	}
 	public void initListeners()
@@ -1087,7 +1134,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 			TextView chsP = new TextView(this);
 			chsP.setTextSize(18);
 			chsP.setGravity(Gravity.LEFT);
-			chsP.setHeight(52);
+			chsP.setHeight(72);
 			chsP.setShadowLayer(2f, 2f, 2f, Color.BLACK);
 			chsP.setPadding(10, 10, 0, 10);
 			chsP.setText(vProjects.get(i).getName());
@@ -1096,29 +1143,87 @@ public class ImageTargets extends Activity implements SensorEventListener
 			chsP.setOnClickListener(myh);
 			mLL.addView(chsP);
 		}
-		TextView hd=new TextView(this);
-		hd.setTextSize(18);
-		hd.setGravity(Gravity.LEFT);
-		hd.setHeight(52);
-		hd.setLayoutParams(new ViewGroup.LayoutParams(50, 30));
-		hd.setShadowLayer(2f, 2f, 2f, Color.BLACK);
-		hd.setPadding(10, 10, 0, 10);
-		hd.setText("HideGUI");
-		hd.setClickable(true);
-		hd.setBackgroundColor(Color.CYAN);
-		MyHideClickListener mhc = new MyHideClickListener();
-		hd.setOnClickListener(mhc);
-		mGUI.addView(hd);
+		HideTutorial();
+		HideMenu();
 	}
-	private class MyHideClickListener implements OnClickListener
+	public void ShowHideMenu()
 	{
-		public MyHideClickListener()
+		if(MenuVisible==true)
+		{
+			HideMenu();
+		}
+		else
+		{
+			ShowMenu();
+		}
+	}
+	public void ShowMenu()
+	{
+		scrollContainer.setVisibility(View.VISIBLE);
+		mMenuBtn.setBackgroundResource(R.drawable.info_b);
+		HideTutorial();
+		MenuVisible=true;
+	}
+	public void HideMenu()
+	{
+		
+		scrollContainer.setVisibility(View.GONE);
+		mMenuBtn.setBackgroundResource(R.drawable.back_b);
+		MenuVisible=false;
+	}
+	public void ShowDefaultTutorial()
+	{
+		ShowTutorial("file://"+Environment.getExternalStorageDirectory()+"/"+dirname+"/"+tutorial);
+	}
+	public void ShowProjectTutorial()
+	{
+		
+	}
+	public void ShowTutorial(String uri)
+	{
+		InfoText.loadUrl(uri);
+		InfoText.setVisibility(View.VISIBLE);
+		mInfoBtn.setBackgroundResource(R.drawable.info_b);
+		InfoVisible=true;
+	}
+	public void HideTutorial()
+	{
+		InfoText.setVisibility(View.GONE);
+		mInfoBtn.setBackgroundResource(R.drawable.back_b);
+		InfoVisible=false;
+	}
+	public void ShowHideTutorial()
+	{
+		Log.d("tutr","shown: "+InfoVisible);
+		if(InfoVisible==true)
+		{
+			HideTutorial();
+		}
+		else
+		{
+			ShowDefaultTutorial();
+		}
+	}
+	private class MyInfoClickListener implements OnClickListener
+	{
+		public MyInfoClickListener()
 		{
 			
 		}
 		public void onClick(View v)
 		{
-			hideGUI();
+			ShowHideTutorial();
+		}
+	}
+	private class MyMMenuClickListener implements OnClickListener
+	{
+		public MyMMenuClickListener()
+		{
+			
+		}
+		public void onClick(View v)
+		{
+			ShowHideMenu();
 		}
 	}
 	private class MyMenuClickListener implements OnClickListener

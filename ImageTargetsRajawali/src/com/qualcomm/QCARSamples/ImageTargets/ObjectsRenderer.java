@@ -80,7 +80,7 @@ OnErrorListener
 		textureNames = new ArrayList<String>();
 		textureInfos = new ArrayList<TextureInfo>();
 		//mLoad=h;
-		RajLog.enableDebug(false);
+		RajLog.enableDebug(true);
 		/* setup markers position*/
 		MarkerPlane c=new MarkerPlane(1,1,1,1);
 		c.setRotX(180);
@@ -230,6 +230,7 @@ OnErrorListener
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config)
 	{
+		Log.d("created surface","created");
 		super.onSurfaceCreated(gl, config);
 	}
 
