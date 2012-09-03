@@ -3,6 +3,8 @@ package com.qualcomm.QCARSamples.ImageTargets;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 import android.opengl.Matrix;
+import android.view.View;
+import android.widget.ImageView;
 
 import android.os.Environment;
 import rajawali.renderer.RajawaliRenderer;
@@ -29,26 +31,55 @@ import android.media.AudioManager;
 import android.graphics.SurfaceTexture;
 import rajawali.bounds.*;
 import rajawali.math.Quaternion;
+import android.os.Handler;
+import android.os.Message;
 
 /** The renderer class for the ImageTargets sample. */
-public class ObjectsRenderer extends RajawaliRenderer
+public class ObjectsRenderer extends RajawaliRenderer implements
+OnPreparedListener, OnBufferingUpdateListener, OnCompletionListener,
+OnErrorListener
 {
-
+	private Handler mLoad;
+	public boolean					izLoaded	= true; 
+	public boolean					doLoad		= true;
+	public boolean doReset=false;
+	public int						curProj		= 0;	
+	private MediaPlayer				mMediaPlayer;
+	private SurfaceTexture			mTexture;
+	private String dirn;
+	private ArrayList<String>		textureNames;
+	private ArrayList<TextureInfo>	textureInfos;
+	
+	private boolean isTracking=false;
+	private long lastTrackTime=0;
 	private ObjParser				mParser;
 	private TextureManager			mTextureManager;
+	private TextureManager mVideoTextureM;
 	private ArrayList<ProjectLevel>	ps;
-	private MarkerPlane c3;
+
 	private float[] mm1=new float[16];//marker 1 matrix
 	private float[] mm2=new float[16];//marker 2 matrix
 	private float[] mm3=new float[16];//marker 3 matrix
 	private float[] mm4=new float[16];//marker 4 matrix
 	private float[] mm=new float[16];//current tracking marker
+	
 	protected float[] mInvMatrix = new float[16];//inverse matrix of pose
 	protected float[] mCamMatrix=new float[16];//camera matrix
 	protected Quaternion q=new Quaternion();
-	public ObjectsRenderer(Context context)
+	
+	public Number3D camPos=new Number3D(0f,1.4f,0f);
+	
+	public float phi=0f;
+	public float theta=90f;
+	private Context ctx;
+	public ObjectsRenderer(Context context, String d/*, Handler h*/)
 	{
 		super(context);
+		ctx=context;
+		dirn=d;
+		textureNames = new ArrayList<String>();
+		textureInfos = new ArrayList<TextureInfo>();
+		//mLoad=h;
 		RajLog.enableDebug(false);
 		/* setup markers position*/
 		MarkerPlane c=new MarkerPlane(1,1,1,1);
@@ -78,21 +109,37 @@ public class ObjectsRenderer extends RajawaliRenderer
 		c.setRotY(180);
 		mm3=c.getModelViewMatrix();
 		c=null;
-		System.gc();
+		//System.gc();
 	}
 
 	protected void initScene()
 	{
+		mVideoTextureM=new TextureManager();		
 		mTextureManager = new TextureManager();
 		mCamera.setFarPlane(50f);
 		mCamera.setNearPlane(0.1f);
-		mCamera.setY(1.4f);
-		LoadObjects(ps.get(0));
+		
+		/* camera init*/
+		Number3D la=SphericalToCartesian(phi,theta,1);
+		mCamera.setPosition(camPos);
+		mCamera.setLookAt(new Number3D((camPos.x+la.x), (camPos.y+la.y), (camPos.z+la.z)));
 		System.gc();
 	}
-
+	public void clearScene()
+	{
+		clearChildren();
+		super.mNumChildren=0;
+		mTextureManager.reset();
+		textureNames.clear();
+		textureInfos.clear();
+		System.gc();
+	}
 	public void setPosition(String n, float[] CM)
 	{
+		isTracking=true;
+		
+		lastTrackTime=System.currentTimeMillis();
+		
 		if(n.contentEquals("marker1"))
 	    {
 	    	mm=mm1;
@@ -122,28 +169,64 @@ public class ObjectsRenderer extends RajawaliRenderer
 		float roll=Math.round(Math.toDegrees(q.getRoll(false)));
 		if(n.contentEquals("marker4"))
 		{
-			mCamera.setRotX(180+pitch);
-			mCamera.setRotY(-1*yaw);
-			mCamera.setRotZ(0);
-			mCamera.setPosition(new Number3D(mCamMatrix[12],1.4f,-1*mCamMatrix[14]));
+			phi=-1*yaw;
+			theta=180+pitch;
+			camPos.x=mCamMatrix[12];
+			camPos.z=-1*mCamMatrix[14];
 		}
 		else if(n.contentEquals("marker2") || n.contentEquals("marker1"))
-		{
-			mCamera.setRotX(180-pitch);
-			mCamera.setRotY(-1*yaw+180);
-			mCamera.setRotZ(0);
-			mCamera.setPosition(new Number3D(-1*mCamMatrix[12],1.4f,mCamMatrix[14]));
+		{	
+			phi=-1*yaw+180;
+			theta=180-pitch;
+			
+			camPos.x=-1*mCamMatrix[12];
+			camPos.z=mCamMatrix[14];
 		}
 		else if(n.contentEquals("marker3"))
 		{
-			mCamera.setRotX(0);
-			mCamera.setRotY(-1*yaw-90);
-			mCamera.setRotZ(180+pitch);
-			mCamera.setPosition(new Number3D(mCamMatrix[14],1.4f,mCamMatrix[12]));
+			phi=-1*yaw-90;
+			theta=180+pitch;
+			camPos.x=mCamMatrix[14];
+			camPos.z=mCamMatrix[12];
 		}
-		System.gc();
+		
+		theta=theta+90f;
+		Number3D la=SphericalToCartesian(phi,theta,1);
+		mCamera.setPosition(camPos);
+		mCamera.setLookAt(new Number3D((camPos.x+la.x), (camPos.y+la.y), (camPos.z+la.z)));
 	}
-
+	
+	public Number3D SphericalToCartesian(float phi, float theta, float r)
+	{
+		Number3D coords = new Number3D();
+		float p = (float) Math.toRadians(phi);
+		float t = (float) Math.toRadians(theta);
+		float sinPhi = (float) (Math.round(Math.sin(p) * 1000)) / 1000;
+		float cosPhi = (float) (Math.round(Math.cos(p) * 1000)) / 1000;
+		float sinTheta = (float) (Math.round(Math.sin(t) * 1000)) / 1000;
+		float cosTheta = (float) (Math.round(Math.cos(t) * 1000)) / 1000;
+		float ay = r * cosTheta;
+		float ax = r * sinPhi * sinTheta;
+		float az = r * cosPhi * sinTheta;
+		coords.x = ax;
+		coords.y = ay;
+		coords.z = az;
+		return coords;
+	}
+	
+	public Number3D CylindricalToCartesian(float phi, float r, float h)
+	{
+		Number3D coords = new Number3D();
+		float p = (float) Math.toRadians(phi);
+		float sinPhi = (float) (Math.round(Math.sin(p) * 1000)) / 1000;
+		float cosPhi = (float) (Math.round(Math.cos(p) * 1000)) / 1000;
+		float ax = r * sinPhi;
+		float az = r * cosPhi;
+		coords.x = ax;
+		coords.y = h;
+		coords.z = az;
+		return coords;
+	}
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config)
 	{
@@ -154,69 +237,143 @@ public class ObjectsRenderer extends RajawaliRenderer
 	public void onDrawFrame(GL10 glUnused)
 	{
 		// mTexture.updateTexImage();
+		if(doReset==true)
+		{
+			resetScene();
+			System.gc();
+			doReset=false;
+		}
+		if (izLoaded == false)
+		{
+			Log.d("render","load scene");
+			clearScene();
+			Message m=new Message();
+			((ImageTargets)ctx).mLoadingHandler.sendMessage(m);
+			loadScene();
+			izLoaded=true;
+			System.gc();
+		}
 		super.onDrawFrame(glUnused);
-		// Log.d("main","rendering");
+		
+		//iterate thru objects for interactivity
+		/*
+		if(doLoad==true)
+		{
+			
+		}
+		*/
 	}
-
+	public void resetRenderer()
+	{
+		doReset=true;
+	}
+	public void resetScene()
+	{
+		Log.d("render","reset scene start");
+		clearScene();
+		curProj=0;
+		izLoaded=true;
+		doLoad=true;
+		Log.d("render","reset scene end");
+	}
+	protected void loadScene()
+	{
+		LoadObjects(ps.get(curProj));
+	}
+	
 	public void setObjs(ArrayList<ProjectLevel> p)
 	{
 		this.ps = p;
 	}
+	public void LoadTextures(ProjectLevel p)
+	{
+		Log.d("textures size","s: "+p.Textures.size());
+		for(int i=0;i<p.Textures.size();i++)
+		{
+			String ttn=Environment.getExternalStorageDirectory() + "/"+dirn+"/"+ p.Textures.get(i);
+			Bitmap mBM = BitmapFactory.decodeFile(ttn);
+			Log.d("textures", ttn);
+			textureInfos.add(i, mTextureManager.addTexture(mBM));
+		}
+	}
 	public void LoadObjects(ProjectLevel p)
 	{
+		
+		LoadTextures(p);
+		
 		for (int i = 0; i < p.getModels().size(); i++)
 		{
-			mParser = new ObjParser(this, p.getModels().get(i).getModel());
+			String onn=dirn+"/"+p.getModels().get(i).getModel();
+			Log.d("model: ",onn);
+			mParser = new ObjParser(this, onn);
 			mParser.parse();
 			BaseObject3D obj = mParser.getParsedObject();
+			obj.setMaterial(new SimpleMaterial());
 			obj.setDepthMaskEnabled(true);
 			obj.setDepthTestEnabled(true);
 			obj.setBlendingEnabled(true);
 			obj.setBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			if (p.getModels().get(i).isDoubleSided())
 			{
-				//obj.setDoubleSided(true);
+				obj.setDoubleSided(true);
 			}
-			if (p.getModels().get(i).isVideo())
-			{
-				// Log.d("isvideo", "yeees");
-				// obj.setMaterial(vmaterial);
-				// obj.addTexture(vt);
-			}
-			else
-			{
-				obj.setMaterial(new SimpleMaterial());
-				String tn = p.getModels().get(i).getTexture();
-				//if (!textureNames.contains(tn))
-				//{
-					//textureNames.add(tn);// store texture names for unique
-											// textures
-					//int idx = textureNames.indexOf(tn);// get index
-
-					Bitmap mBM = BitmapFactory.decodeFile(Environment
-							.getExternalStorageDirectory() + "/" + tn);
-					TextureInfo ti = mTextureManager.addTexture(mBM);
-					//textureInfos.add(idx, ti);// store texture info with same
-												// index as texture name
-					obj.addTexture(ti);
-				//}
-				//else
-				//{
-					//int idx = textureNames.indexOf(tn);
-					//obj.addTexture(textureInfos.get(idx));
-				//}
-			}
-			addChild(obj);
-			/*
+			int ti=p.Textures.indexOf(p.getModels().get(i).getTexture());
+			Log.d("texture inf",p.getModels().get(i).getTexture()+"|"+ti);
+			obj.addTexture(textureInfos.get(ti));
+			
 			BoundingBox bb = obj.getGeometry().getBoundingBox();
 			Number3D mi = bb.getMin();
 			Number3D mx = bb.getMax();
-			Number3D cnt = new Number3D((mi.x + mx.x) / 2, (mi.y + mx.y) / 2,
-					(mi.z + mx.z) / 2);
+			Number3D cnt = new Number3D((mi.x + mx.x) / 2, (mi.y + mx.y) / 2, (mi.z + mx.z) / 2);
+			addChild(obj);
 			p.getModels().get(i).setCenter(cnt);
 			p.getModels().get(i).setObj(obj);
-			*/
+			//if (p.getModels().get(i).isVideo())
+			//{
+				// Log.d("isvideo", "yeees");
+				// obj.setMaterial(vmaterial);
+				// obj.addTexture(vt);
+			//}
 		}
 		System.gc();
+	}
+	public void onBufferingUpdate(MediaPlayer arg0, int arg1)
+	{
+	}
+	public void onPrepared(MediaPlayer mediaplayer)
+	{
+		//mMediaPlayer.start();
+	}
+	public void onCompletion(MediaPlayer arg0)
+	{
+	}
+	public boolean onError(MediaPlayer mp, int what, int extra)
+	{
+		return false;
+	}
+	public void onSurfaceDestroyed()
+	{
+		//mMediaPlayer.release();
+		//super.onSurfaceDestroyed();
+	}
+	public void showProject(int k)
+	{
+		if (doLoad == true || curProj != k)
+		{
+			curProj = k;
+			izLoaded = false;
+			doLoad = false;
+		}
+		/*
+		 * mMediaPlayer.stop(); hideModels(); ProjectLevel p = ps.get(k); for
+		 * (int i = 0; i < p.getModels().size(); i++) {
+		 * p.getModels().get(i).obj.setVisible(true); if
+		 * (p.getModels().get(i).isVideo()) { try {
+		 * 
+		 * mMediaPlayer.setDataSource(Environment .getExternalStorageDirectory()
+		 * + "/" + p.getModels().get(i).getTexture());
+		 * mMediaPlayer.prepareAsync(); Log.d("video", "loading"); } catch
+		 * (IOException e) { Log.d("video", "not loaded"); } } }
+		 */
 	}
 }

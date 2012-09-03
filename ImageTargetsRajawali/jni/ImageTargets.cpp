@@ -257,6 +257,7 @@ void configureVideoBackground() {
     QCAR::CameraDevice& cameraDevice = QCAR::CameraDevice::getInstance();
     //QCAR::VideoMode videoMode = cameraDevice.getVideoMode(QCAR::CameraDevice::MODE_DEFAULT);
     QCAR::VideoMode videoMode = cameraDevice.getVideoMode(QCAR::CameraDevice::MODE_OPTIMIZE_QUALITY);
+    //QCAR::VideoMode videoMode = cameraDevice.getVideoMode(QCAR::CameraDevice::MODE_OPTIMIZE_SPEED);
 
 
     // Configure the video background

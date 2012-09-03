@@ -4,18 +4,30 @@ import java.util.ArrayList;
 
 public class ProjectLevel
 {
-	private String						projectName;
-	private ArrayList<ProjectObject>	objs;
+	public String					projectName;
+	public ArrayList<ProjectObject>	objs;
+	public ArrayList<String>		Textures;
 
 	ProjectLevel(String pn)
 	{
 		projectName = pn;
 		objs = new ArrayList<ProjectObject>();
+		Textures = new ArrayList<String>();
 	}
+
+	public void addTexture(String tn)
+	{
+		if (!Textures.contains(tn))
+		{
+			Textures.add(tn);
+		}
+	}
+
 	public void init()
 	{
-		
+
 	}
+
 	public String getName()
 	{
 		return projectName;
