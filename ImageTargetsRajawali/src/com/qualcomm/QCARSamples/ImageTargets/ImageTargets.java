@@ -980,7 +980,6 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void SelectProject(int w)
 	{
-		//scrollContainer.setVisibility(View.GONE);
 		HideMenu();
 		HideTutorial();
 		mRenderer2.showProject(w);
@@ -1042,7 +1041,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 			if (omegaMagnitude > EPSILON && moving == true)
 			{
 				float rot =(float) Math.toDegrees(gyroVal * dT);
-				//mRenderer2.doGyroRot(rot);
+				mRenderer2.doGyroRot(rot);
 			}
 		}
 		timestamp = event.timestamp;
@@ -1117,8 +1116,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	
 	public void onStep()
 	{
-		//mRenderer2.onStep(step_len);
-		
+		mRenderer2.onStep(step_len);
 		//float[] ap = CylindricalToCartesian(mRenderer2.phi, step_len, cam_y);
 		//ap[0] = cam_x - ap[0];
 		//ap[2] = cam_z - ap[2];

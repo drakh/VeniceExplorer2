@@ -58,28 +58,13 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	private TextureManager			mVideoTextureM;
 	private ArrayList<ProjectLevel>	ps;
 
-	private float[]					mm1				= new float[16];				// marker
-																					// 1
-																					// matrix
-	private float[]					mm2				= new float[16];				// marker
-																					// 2
-																					// matrix
-	private float[]					mm3				= new float[16];				// marker
-																					// 3
-																					// matrix
-	private float[]					mm4				= new float[16];				// marker
-																					// 4
-																					// matrix
-	private float[]					mm				= new float[16];				// current
-																					// tracking
-																					// marker
-
-	protected float[]				mInvMatrix		= new float[16];				// inverse
-																					// matrix
-																					// of
-																					// pose
-	protected float[]				mCamMatrix		= new float[16];				// camera
-																					// matrix
+	private float[]					mm1				= new float[16];
+	private float[]					mm2				= new float[16];
+	private float[]					mm3				= new float[16];
+	private float[]					mm4				= new float[16];
+	private float[]					mm				= new float[16];
+	protected float[]				mInvMatrix		= new float[16];
+	protected float[]				mCamMatrix		= new float[16];
 	protected Quaternion			q				= new Quaternion();
 
 	public Number3D					camPos			= new Number3D(0f, 1.4f, 0f);
@@ -88,15 +73,14 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	public float					theta			= 90f;
 	private Context					ctx;
 
-	public ObjectsRenderer(Context context, String d/* , Handler h */)
+	public ObjectsRenderer(Context context, String d)
 	{
 		super(context);
 		ctx = context;
 		dirn = d;
 		textureNames = new ArrayList<String>();
 		textureInfos = new ArrayList<TextureInfo>();
-		// mLoad=h;
-		RajLog.enableDebug(true);
+		RajLog.enableDebug(false);
 		/* setup markers position */
 		MarkerPlane c = new MarkerPlane(1, 1, 1, 1);
 		c.setRotX(180);
@@ -156,9 +140,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	public void setPosition(String n, float[] CM)
 	{
 		isTracking = true;
-
-		lastTrackTime = System.currentTimeMillis();
-
+		lastTrackTime = System.nanoTime()/1000000000;
 		if (n.contentEquals("marker1"))
 		{
 			mm = mm1;
@@ -179,8 +161,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		Matrix.multiplyMM(mCamMatrix, 0, mInvMatrix, 0, CM, 0);
 		Number3D a_x = new Number3D(mCamMatrix[0], mCamMatrix[1], mCamMatrix[2]);
 		Number3D a_y = new Number3D(mCamMatrix[4], mCamMatrix[5], mCamMatrix[6]);
-		Number3D a_z = new Number3D(mCamMatrix[8], mCamMatrix[9],
-				mCamMatrix[10]);
+		Number3D a_z = new Number3D(mCamMatrix[8], mCamMatrix[9], mCamMatrix[10]);
 		q.fromAxes(a_x, a_y, a_z);
 		float[] rm = new float[16];
 		q.toRotationMatrix(rm);
@@ -198,7 +179,6 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		{
 			phi = -1 * yaw + 180;
 			theta = 180 - pitch;
-
 			camPos.x = -1 * mCamMatrix[12];
 			camPos.z = mCamMatrix[14];
 		}
@@ -213,8 +193,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		theta = theta + 90f;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
-		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
-				(camPos.z + la.z)));
+		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
 	}
 
 	public Number3D SphericalToCartesian(float phi, float theta, float r)
@@ -293,12 +272,10 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 
 	public void resetScene()
 	{
-		Log.d("render", "reset scene start");
 		clearScene();
 		curProj = 0;
 		izLoaded = true;
 		doLoad = true;
-		Log.d("render", "reset scene end");
 	}
 
 	protected void loadScene()
@@ -337,7 +314,6 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	{
 
 		LoadTextures(p);
-
 		for (int i = 0; i < p.getModels().size(); i++)
 		{
 			String onn = dirn + "/" + p.getModels().get(i).getModel();
@@ -382,7 +358,31 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		}
 		System.gc();
 	}
-
+	public boolean checkTracking()
+	{
+		float ts=System.nanoTime()/1000000000;
+		float dt=ts-lastTrackTime;
+		if( (isTracking==true && dt>=1.0f) || isTracking==false)
+		{
+			isTracking=false;
+		}	
+		return isTracking;
+	}
+	public void doGyroRot(float add)
+	{
+		if(checkTracking()==false)
+		{
+			Log.d("timediff","td: Not tracking doing sensors-gyro");
+		}
+	}
+	public void onStep(float sl)
+	{
+		if(checkTracking()==false)
+		{
+			Log.d("timediff","td: Not tracking doing sensors-step");
+		}		
+	}
+	
 	public void onBufferingUpdate(MediaPlayer arg0, int arg1)
 	{
 	}
