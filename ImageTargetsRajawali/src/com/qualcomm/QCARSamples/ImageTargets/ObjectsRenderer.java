@@ -375,6 +375,25 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 			Log.d("timediff","td: Not tracking doing sensors-gyro");
 		}
 	}
+	public void doOrientationRot(float p)
+	{
+		if(checkTracking()==false)
+		{
+			Log.d("timediff","td: Not tracking doing sensors-orientation");
+		}		
+	}
+	public void setDockingPos()
+	{
+		camPos.x=6.414f;
+		camPos.z=3.684f;
+		theta=90;
+		phi=90;
+		Number3D la = SphericalToCartesian(phi, theta, 1);
+		mCamera.setPosition(camPos);
+		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
+				(camPos.z + la.z)));
+		mCamera.setPosition(camPos);
+	}
 	public void onStep(float sl)
 	{
 		if(checkTracking()==false)

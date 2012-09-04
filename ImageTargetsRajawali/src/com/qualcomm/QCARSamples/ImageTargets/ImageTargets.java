@@ -709,16 +709,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 		batteryUnplugged=new BroadcastReceiver() {
 			@Override
 			public void onReceive(Context context, Intent intent) {
-				showGUI();				
-				/*
-				steps=0;
-				cam_x = (float) -6.414;
-				cam_z = (float) -3.684;
-				mRenderer.setCamPos(cam_x, cam_y, cam_z);				
-				//tutorial here
-				tutorial.setVisibility(View.VISIBLE);
-				tutorialbtn.setVisibility(View.VISIBLE);
-				*/
+				showGUI();	
+				mRenderer2.setDockingPos();
 			}
 		};
 		this.registerReceiver(batteryPluged, new IntentFilter(Intent.ACTION_POWER_CONNECTED));
