@@ -56,7 +56,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	/*step detector*/
 	private String					loadingText				= "Loading, please wait";
 	private boolean					detecting				= false;
-	private static int				mLimit					= 15;
+	private static int				mLimit					= 10;
 	private static float			mLastValues[]			= new float[3 * 2];
 	private static float			mScale[]				= new float[2];
 	private static float			mYOffset				= 0;
@@ -1008,11 +1008,11 @@ public class ImageTargets extends Activity implements SensorEventListener
 				orientation[0] = event.values[1] + 180;
 				orientation[1] = event.values[0];
 				orientation[2] = event.values[2];
-				//setCameraPos();
-				//if (!detecting)
-				//{
-					//storeCurrentRotPos();
-				//}
+				mRenderer2.doOrientationRot(orientation[0]);
+				if (!detecting)
+				{
+					detecting = true;
+				}
 				break;
 			case Sensor.TYPE_ACCELEROMETER:
 				accFunction(event);
@@ -1109,12 +1109,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	public void onStep()
 	{
 		mRenderer2.onStep(step_len);
-		//float[] ap = CylindricalToCartesian(mRenderer2.phi, step_len, cam_y);
-		//ap[0] = cam_x - ap[0];
-		//ap[2] = cam_z - ap[2];
-		//mRenderer.setCamPos(ap[0], ap[1], ap[2]);
-		//storeCurrentRotPos();
-		//steps++;
+		detecting=true;
 	}
 	public void CreateTextMenu()
 	{

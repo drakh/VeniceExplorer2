@@ -373,6 +373,10 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		if(checkTracking()==false)
 		{
 			Log.d("timediff","td: Not tracking doing sensors-gyro");
+			phi-=add;//add gyro rotation to current rotation
+			Number3D la = SphericalToCartesian(phi, theta, 1);
+			mCamera.setPosition(camPos);
+			mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),(camPos.z + la.z)));
 		}
 	}
 	public void doOrientationRot(float p)
@@ -380,25 +384,35 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		if(checkTracking()==false)
 		{
 			Log.d("timediff","td: Not tracking doing sensors-orientation");
+			theta=p;
+			Number3D la = SphericalToCartesian(phi, theta, 1);
+			mCamera.setPosition(camPos);
+			mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),(camPos.z + la.z)));
 		}		
 	}
 	public void setDockingPos()
 	{
 		camPos.x=6.414f;
 		camPos.z=3.684f;
-		theta=90;
-		phi=90;
+		theta=90f;
+		phi=0f;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
 				(camPos.z + la.z)));
-		mCamera.setPosition(camPos);
 	}
 	public void onStep(float sl)
 	{
 		if(checkTracking()==false)
 		{
 			Log.d("timediff","td: Not tracking doing sensors-step");
+			Number3D ap = CylindricalToCartesian(phi, sl, camPos.y);
+			camPos.x+=ap.x;
+			camPos.z+=ap.z;
+			Number3D la = SphericalToCartesian(phi, theta, 1);
+			mCamera.setPosition(camPos);
+			mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
+					(camPos.z + la.z)));
 		}		
 	}
 	
