@@ -907,6 +907,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 						{
 							tutorial = av;
 						}
+						else if(an.contentEquals("fov"))
+						{
+							FOV=Float.parseFloat(av);
+						}
 
 					}
 				}
