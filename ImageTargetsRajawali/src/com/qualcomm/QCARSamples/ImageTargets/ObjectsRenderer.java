@@ -50,7 +50,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	private String					dirn;
 	private ArrayList<String>		textureNames;
 	private ArrayList<TextureInfo>	textureInfos;
-
+	private float FOV;
 	private boolean					isTracking		= false;
 	private long					lastTrackTime	= 0;
 	private ObjParser				mParser;
@@ -73,9 +73,10 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	public float					theta			= 90f;
 	private Context					ctx;
 
-	public ObjectsRenderer(Context context, String d)
+	public ObjectsRenderer(Context context, String d, float fov)
 	{
 		super(context);
+		FOV=fov;
 		ctx = context;
 		dirn = d;
 		textureNames = new ArrayList<String>();
@@ -124,6 +125,8 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
 				(camPos.z + la.z)));
+		mCamera.setFieldOfView(FOV);
+		lastTrackTime = System.nanoTime()/1000000000;
 		System.gc();
 	}
 
@@ -140,7 +143,10 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	public void setPosition(String n, float[] CM)
 	{
 		isTracking = true;
-		lastTrackTime = System.nanoTime()/1000000000;
+		float c_phi=0f;
+		float c_theta=0f;
+		Number3D c_camPos=new Number3D();
+		long curTime=System.nanoTime()/1000000000;
 		if (n.contentEquals("marker1"))
 		{
 			mm = mm1;
@@ -170,27 +176,37 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		float roll = Math.round(Math.toDegrees(q.getRoll(false)));
 		if (n.contentEquals("marker4"))
 		{
-			phi = -1 * yaw;
-			theta = 180 + pitch;
-			camPos.x = mCamMatrix[12];
-			camPos.z = -1 * mCamMatrix[14];
+			c_phi = -1 * yaw;
+			c_theta = 180 + pitch;
+			c_camPos.x = mCamMatrix[12];
+			c_camPos.z = -1 * mCamMatrix[14];
 		}
 		else if (n.contentEquals("marker2") || n.contentEquals("marker1"))
 		{
-			phi = -1 * yaw + 180;
-			theta = 180 - pitch;
-			camPos.x = -1 * mCamMatrix[12];
-			camPos.z = mCamMatrix[14];
+			c_phi = -1 * yaw + 180;
+			c_theta = 180 - pitch;
+			c_camPos.x = -1 * mCamMatrix[12];
+			c_camPos.z = mCamMatrix[14];
 		}
 		else if (n.contentEquals("marker3"))
 		{
-			phi = -1 * yaw - 90;
-			theta = 180 + pitch;
-			camPos.x = mCamMatrix[14];
-			camPos.z = mCamMatrix[12];
+			c_phi = -1 * yaw - 90;
+			c_theta = 180 + pitch;
+			c_camPos.x = mCamMatrix[14];
+			c_camPos.z = mCamMatrix[12];
 		}
-
-		theta = theta + 90f;
+		float dt=(float) (curTime-lastTrackTime);
+		
+		lastTrackTime = curTime;
+		c_theta=c_theta+90f;
+		c_phi=c_phi%360;
+		c_theta=c_theta%360;
+		phi+=(c_phi-phi)/4;
+		theta+=(c_theta-theta)/4;
+		camPos.x+=(c_camPos.x-camPos.x)/4;
+		camPos.z+=(c_camPos.z-camPos.z)/4;
+		//smoothedValue += timeSinceLastUpdate * (newValue - smoothedValue) / smoothing
+		//theta = theta + 90f;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));

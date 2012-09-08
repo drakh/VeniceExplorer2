@@ -9,7 +9,7 @@ public class ProjectObject
 	private String		modelName		= "";
 	private String		modelTexture	= "";
 	private String		modelVideo		= "";
-
+	private String		ActionName		= "";
 	private int			doublesided		= 0;
 	private int			video			= 0;
 	private int			hidden			= 0;
@@ -48,17 +48,20 @@ public class ProjectObject
 	{
 		modelName = path;
 	}
+
 	public void setInteractive(String ia)
 	{
-		if(ia.equalsIgnoreCase("true"))
+		if (ia.equalsIgnoreCase("true"))
 		{
-			interactive=1;
+			interactive = 1;
 		}
 	}
+
 	public void setVisible(String v)
 	{
-		if(Integer.parseInt(v)==0) hidden=1;
+		if (Integer.parseInt(v) == 0) hidden = 1;
 	}
+
 	public String getModel()
 	{
 		return modelName;
@@ -68,11 +71,13 @@ public class ProjectObject
 	{
 		return modelTexture;
 	}
+
 	public boolean isVisible()
 	{
-		if(hidden==0) return false;
+		if (hidden == 0) return false;
 		else return true;
 	}
+
 	public boolean isDoubleSided()
 	{
 		boolean r = false;
@@ -90,6 +95,11 @@ public class ProjectObject
 		boolean r = false;
 		if (video == 1) r = true;
 		return r;
+	}
+
+	public void SetActionName(String n)
+	{
+		ActionName = n;
 	}
 
 }

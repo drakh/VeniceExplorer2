@@ -53,49 +53,48 @@ import android.content.IntentFilter;
 /** The main activity for the ImageTargets sample. */
 public class ImageTargets extends Activity implements SensorEventListener
 {
-	/*step detector*/
-	private String					loadingText				= "Loading, please wait";
-	private boolean					detecting				= false;
-	private static int				mLimit					= 10;
-	private static float			mLastValues[]			= new float[3 * 2];
-	private static float			mScale[]				= new float[2];
-	private static float			mYOffset				= 0;
-	private static float			mLastDirections[]		= new float[3 * 2];
-	private static float			mLastExtremes[][]		= {
-			new float[3 * 2], new float[3 * 2]				};
-	private static float			mLastDiff[]				= new float[3 * 2];
-	private static int				mLastMatch				= -1;
-	private int						steps					= 0;
-	private float					step_len				= 0.67f;
-	private int						da						= 0;
-	
-	private BroadcastReceiver batteryPluged;
-	private BroadcastReceiver batteryUnplugged;
-	//gui
-	private FrameLayout mLayout;
-	private ScrollView scrollContainer;
-	private FrameLayout mGUI;
-	private TextView mProjView;
-	private LinearLayout mLL;
-	private SensorManager			mSensorManager			= null;
-	private TextView mMenuBtn;
-	private TextView mInfoBtn;
-	private boolean MenuVisible=true;
-	private boolean InfoVisible=true;
-	private WebView InfoText;
-	private float[]					orientation=new float[3];
-	
+	/* step detector */
+	private String					loadingText						= "Loading, please wait";
+	private boolean					detecting						= false;
+	private static int				mLimit							= 10;
+	private static float			mLastValues[]					= new float[3 * 2];
+	private static float			mScale[]						= new float[2];
+	private static float			mYOffset						= 0;
+	private static float			mLastDirections[]				= new float[3 * 2];
+	private static float			mLastExtremes[][]				= {new float[3 * 2], new float[3 * 2]};
+	private static float			mLastDiff[]						= new float[3 * 2];
+	private static int				mLastMatch						= -1;
+	private int						steps							= 0;
+	private float					step_len						= 0.67f;
+	private int						da								= 0;
+	private float					FOV								= 70f;
+	private BroadcastReceiver		batteryPluged;
+	private BroadcastReceiver		batteryUnplugged;
+	// gui
+	private FrameLayout				mLayout;
+	private ScrollView				scrollContainer;
+	private FrameLayout				mGUI;
+	private TextView				mProjView;
+	private LinearLayout			mLL;
+	private SensorManager			mSensorManager					= null;
+	private TextView				mMenuBtn;
+	private TextView				mInfoBtn;
+	private boolean					MenuVisible						= true;
+	private boolean					InfoVisible						= true;
+	private WebView					InfoText;
+	private float[]					orientation						= new float[3];
+
 	// setup
 	private String					filename						= "main.xml";
 	private String					dirname							= "VeniceViewer";
 	private ArrayList<ProjectLevel>	vProjects;
-	public static final float		EPSILON					= 0.000000001f;
-	private static final float		NS2S					= 1.0f / 1000000000.0f;
-	private float					timestamp				= 0f;
-	float							gyroVal					= 0;
-	boolean							moving					= false;
-	float							accVal					= 9.8f;
-	private boolean checkLoad=false;
+	public static final float		EPSILON							= 0.000000001f;
+	private static final float		NS2S							= 1.0f / 1000000000.0f;
+	private float					timestamp						= 0f;
+	float							gyroVal							= 0;
+	boolean							moving							= false;
+	float							accVal							= 9.8f;
+	private boolean					checkLoad						= false;
 	// Application status constants:
 	private static final int		APPSTATUS_UNINITED				= -1;
 	private static final int		APPSTATUS_INIT_APP				= 0;
@@ -112,8 +111,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private GLSurfaceView			mGlView2;
 	private ImageView				mSplashScreenView;
 	private Handler					mSplashScreenHandler;
-	public Handler mLoadingHandler;
-	private String tutorial="";
+	public Handler					mLoadingHandler;
+	private String					tutorial						= "";
 	private Runnable				mSplashScreenRunnable;
 	private static final long		MIN_SPLASH_SCREEN_TIME			= 2000;
 	long							mSplashScreenStartTime			= 0;
@@ -142,7 +141,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	boolean							mIsStonesAndChipsDataSetActive	= false;
 
 	/** Static initializer block to load native libraries on start-up. */
-	
+
 	static
 	{
 		loadLibrary(NATIVE_LIB_QCAR);
@@ -311,18 +310,19 @@ public class ImageTargets extends Activity implements SensorEventListener
 		DebugLog.LOGD("ImageTargets::onCreate");
 		chkConfig();
 		super.onCreate(savedInstanceState);
-		
-		mLayout=new FrameLayout(this);//main layout
+
+		mLayout = new FrameLayout(this);// main layout
 		mLayout.setForegroundGravity(Gravity.CENTER);
 		setContentView(mLayout);
-		
-		mGUI=new FrameLayout(this);
-		
-		/*menu*/
-		scrollContainer=new ScrollView(this);
-		scrollContainer.setLayoutParams(new ViewGroup.LayoutParams(300, mScreenHeight-100));
+
+		mGUI = new FrameLayout(this);
+
+		/* menu */
+		scrollContainer = new ScrollView(this);
+		scrollContainer.setLayoutParams(new ViewGroup.LayoutParams(300,
+				mScreenHeight - 100));
 		scrollContainer.setY(50f);
-		mLL=new LinearLayout(this);
+		mLL = new LinearLayout(this);
 		mLL.setOrientation(LinearLayout.VERTICAL);
 		mLL.setGravity(Gravity.TOP);
 		mLL.setScrollContainer(true);
@@ -330,23 +330,24 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mLL.setAlpha(0.8f);
 		scrollContainer.addView(mLL);
 		mGUI.addView(scrollContainer);
-		
-		/* info text*/
-		InfoText=new WebView(this);
-		InfoText.setLayoutParams(new ViewGroup.LayoutParams(mScreenWidth-600, mScreenHeight-100));
+
+		/* info text */
+		InfoText = new WebView(this);
+		InfoText.setLayoutParams(new ViewGroup.LayoutParams(mScreenWidth - 600,
+				mScreenHeight - 100));
 		InfoText.setY(50f);
 		InfoText.setX(300f);
 		InfoText.setBackgroundColor(Color.WHITE);
 		InfoText.setAlpha(0.5f);
 		mGUI.addView(InfoText);
-		
-		/*info button*/
-		mInfoBtn=new TextView(this);
+
+		/* info button */
+		mInfoBtn = new TextView(this);
 		mInfoBtn.setBackgroundResource(R.drawable.back_b);
 		mInfoBtn.setLayoutParams(new ViewGroup.LayoutParams(90, 25));
 		mInfoBtn.setText("Info");
-		mInfoBtn.setX(mScreenWidth-110);
-		mInfoBtn.setY(mScreenHeight-45);
+		mInfoBtn.setX(mScreenWidth - 110);
+		mInfoBtn.setY(mScreenHeight - 45);
 		mInfoBtn.setGravity(Gravity.RIGHT);
 		mInfoBtn.setTextColor(Color.DKGRAY);
 		mInfoBtn.setShadowLayer(2f, 2f, 2f, Color.LTGRAY);
@@ -356,9 +357,9 @@ public class ImageTargets extends Activity implements SensorEventListener
 		MyInfoClickListener mic = new MyInfoClickListener();
 		mInfoBtn.setOnClickListener(mic);
 		mGUI.addView(mInfoBtn);
-		
-		/*menu button*/
-		mMenuBtn=new TextView(this);
+
+		/* menu button */
+		mMenuBtn = new TextView(this);
 		mMenuBtn.setBackgroundResource(R.drawable.back_b);
 		mMenuBtn.setLayoutParams(new ViewGroup.LayoutParams(90, 25));
 		mMenuBtn.setText("Menu");
@@ -370,12 +371,12 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mMenuBtn.setTextSize(14);
 		mMenuBtn.setPadding(0, 0, 10, 0);
 		mMenuBtn.setClickable(true);
-		MyMMenuClickListener mmc=new MyMMenuClickListener();
+		MyMMenuClickListener mmc = new MyMMenuClickListener();
 		mMenuBtn.setOnClickListener(mmc);
 		mGUI.addView(mMenuBtn);
-		
-		/* project name*/
-		mProjView=new TextView(this);
+
+		/* project name */
+		mProjView = new TextView(this);
 		mProjView.setTextSize(24);
 		mProjView.setGravity(Gravity.CENTER_HORIZONTAL);
 		mProjView.bringToFront();
@@ -383,16 +384,16 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mProjView.setShadowLayer(2f, 2f, 2f, Color.BLACK);
 		mProjView.setPadding(10, 10, 0, 10);
 		mGUI.addView(mProjView);
-		
-		/* splash screen*/
+
+		/* splash screen */
 		mSplashScreenImageResource = R.drawable.splash_screen_image_targets;
 		mQCARFlags = getInitializationFlags();
-		
+
 		CreateTextMenu();
-		
+
 		mSensorManager = (SensorManager) this.getSystemService(SENSOR_SERVICE);
 		initListeners();
-		
+
 		updateApplicationStatus(APPSTATUS_INIT_APP);
 	}
 
@@ -506,9 +507,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 		// QCAR-specific pause operation
 		QCAR.onPause();
 		mSensorManager.unregisterListener(this);
-		//onStop();
+		// onStop();
 		onDestroy();
 	}
+
 	/** Native function to deinitialize the application. */
 	private native void deinitApplicationNative();
 
@@ -519,9 +521,9 @@ public class ImageTargets extends Activity implements SensorEventListener
 		super.onDestroy();
 
 		// Dismiss the splash screen time out handler:
-		if(mLoadingHandler!=null) 
+		if (mLoadingHandler != null)
 		{
-			mLoadingHandler=null;
+			mLoadingHandler = null;
 		}
 		if (mSplashScreenHandler != null)
 		{
@@ -544,15 +546,15 @@ public class ImageTargets extends Activity implements SensorEventListener
 			mLoadTrackerTask.cancel(true);
 			mLoadTrackerTask = null;
 		}
-		if(batteryPluged!=null)
+		if (batteryPluged != null)
 		{
 			this.unregisterReceiver(batteryPluged);
-			batteryPluged=null;
+			batteryPluged = null;
 		}
-		if(batteryUnplugged!=null)
+		if (batteryUnplugged != null)
 		{
 			this.unregisterReceiver(batteryUnplugged);
-			batteryUnplugged=null;
+			batteryUnplugged = null;
 		}
 		// Ensure that all asynchronous operations to initialize QCAR and
 		// loading
@@ -568,6 +570,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		}
 		System.gc();
 	}
+
 	/**
 	 * NOTE: this method is synchronized because of a potential concurrent
 	 * access by ImageTargets::onResume() and InitQCARTask::onPostExecute().
@@ -639,10 +642,11 @@ public class ImageTargets extends Activity implements SensorEventListener
 					newSplashScreenTime = MIN_SPLASH_SCREEN_TIME
 							- splashScreenTime;
 				}
-				mLoadingHandler=new Handler(){
+				mLoadingHandler = new Handler()
+				{
 					public void handleMessage(Message msg)
 					{
-						String m=(String) msg.obj;
+						String m = (String) msg.obj;
 						showLoading();
 					}
 				};
@@ -655,7 +659,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 						mRenderer.mIsActive = true;
 						mLayout.addView(mGlView);
 						mLayout.addView(mGlView2);
-						mLayout.addView(mGUI);						
+						mLayout.addView(mGUI);
 						updateApplicationStatus(APPSTATUS_CAMERA_RUNNING);
 					}
 				};
@@ -675,20 +679,23 @@ public class ImageTargets extends Activity implements SensorEventListener
 				throw new RuntimeException("Invalid application state");
 		}
 	}
+
 	public void showLoading()
 	{
-		checkLoad=true;
-		mProjView.setText(loadingText);	
+		checkLoad = true;
+		mProjView.setText(loadingText);
 	}
+
 	public void hideLoading()
 	{
-		if(checkLoad==true && mRenderer2.izLoaded==true)
+		if (checkLoad == true && mRenderer2.izLoaded == true)
 		{
-			int cp=mRenderer2.curProj;
+			int cp = mRenderer2.curProj;
 			mProjView.setText(vProjects.get(cp).getName());
-			checkLoad=false;
+			checkLoad = false;
 		}
 	}
+
 	/** Tells native code whether we are in portait or landscape mode */
 	private native void setActivityPortraitMode(boolean isPortrait);
 
@@ -698,37 +705,46 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mSplashScreenView = new ImageView(this);
 		mSplashScreenView.setImageResource(mSplashScreenImageResource);
 		mLayout.addView(mSplashScreenView);
-		mSplashScreenStartTime = System.currentTimeMillis();		
-		batteryPluged=new BroadcastReceiver() {
+		mSplashScreenStartTime = System.currentTimeMillis();
+		batteryPluged = new BroadcastReceiver()
+		{
 			@Override
-			public void onReceive(Context context, Intent intent) {
+			public void onReceive(Context context, Intent intent)
+			{
 				hideGUI();
 				HideTutorial();
 			}
 		};
-		batteryUnplugged=new BroadcastReceiver() {
+		batteryUnplugged = new BroadcastReceiver()
+		{
 			@Override
-			public void onReceive(Context context, Intent intent) {
-				showGUI();	
+			public void onReceive(Context context, Intent intent)
+			{
+				showGUI();
 				mRenderer2.setDockingPos();
 			}
 		};
-		this.registerReceiver(batteryPluged, new IntentFilter(Intent.ACTION_POWER_CONNECTED));
-		this.registerReceiver(batteryUnplugged, new IntentFilter(Intent.ACTION_POWER_DISCONNECTED));
+		this.registerReceiver(batteryPluged, new IntentFilter(
+				Intent.ACTION_POWER_CONNECTED));
+		this.registerReceiver(batteryUnplugged, new IntentFilter(
+				Intent.ACTION_POWER_DISCONNECTED));
 
 	}
+
 	public void showGUI()
 	{
 		mGUI.setVisibility(View.VISIBLE);
 		ShowDefaultTutorial();
 		HideMenu();
 	}
+
 	public void hideGUI()
 	{
 		mProjView.setText("");
 		mGUI.setVisibility(View.GONE);
 		mRenderer2.resetRenderer();
 	}
+
 	/** Native function to initialize the application. */
 	private native void initApplicationNative(int width, int height);
 
@@ -741,7 +757,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		int depthSize = 16;
 		int stencilSize = 0;
 		boolean translucent = QCAR.requiresAlpha();
-		
+
 		/* camera */
 		mGlView = new QCARSampleGLView(this);
 		mGlView.init(mQCARFlags, translucent, depthSize, stencilSize);
@@ -755,7 +771,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mGlView2.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
 		mGlView2.getHolder().setFormat(PixelFormat.TRANSLUCENT);
 		mGlView2.setZOrderMediaOverlay(true);
-		mRenderer2 = new ObjectsRenderer(this,dirname/*,mLoadingHandler*/);
+		mRenderer2 = new ObjectsRenderer(this, dirname, FOV);
 		mRenderer2.setObjs(vProjects);
 		mGlView2.setRenderer(mRenderer2);
 	}
@@ -866,6 +882,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 		int eventType = xpp.getEventType();
 		int jj = 0;
 		ProjectObject po;
+		ObjectAction oa = new ObjectAction();
+		;
+		String ac_nm = "";
+		String ac_a = "";
 		while (eventType != XmlPullParser.END_DOCUMENT)
 		{
 			if (eventType == XmlPullParser.START_DOCUMENT)
@@ -882,16 +902,18 @@ public class ImageTargets extends Activity implements SensorEventListener
 					{
 						String an = xpp.getAttributeName(k);
 						String av = xpp.getAttributeValue(k);
-						
-						 if (an.contentEquals("htmlfile")) 
-						 {
-							 tutorial=av; 
-						 }
-						
+
+						if (an.contentEquals("htmlfile"))
+						{
+							tutorial = av;
+						}
+
 					}
 				}
 				else if (nodeName.contentEquals("project"))
 				{
+					ac_nm = "";
+					ac_a = "";
 					for (int k = 0; k < xpp.getAttributeCount(); k++)
 					{
 						String an = xpp.getAttributeName(k);
@@ -900,7 +922,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 						{
 							vProjects.add(jj, new ProjectLevel(av));
 						}
-						else if(an.contentEquals("htmlfile"))
+						else if (an.contentEquals("htmlfile"))
 						{
 							vProjects.get(jj).setHtml(av);
 						}
@@ -920,7 +942,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 						}
 						else if (an.contentEquals("texture"))
 						{
-							Log.d("parser","texture attribute: "+av+"|"+jj);
+							Log.d("parser", "texture attribute: " + av + "|"
+									+ jj);
 							vProjects.get(jj).addTexture(av);
 							po.setTexture(av);
 						}
@@ -940,22 +963,44 @@ public class ImageTargets extends Activity implements SensorEventListener
 						{
 							po.setVisible(av);
 						}
+						else if (an.contentEquals("action"))
+						{
+							po.SetActionName(av);
+						}
 					}
 					vProjects.get(jj).addModel(po);
 				}
-				
+
 				else if (nodeName.contentEquals("action"))
 				{
-
+					oa = new ObjectAction();
+					for (int k = 0; k < xpp.getAttributeCount(); k++)
+					{
+						String an = xpp.getAttributeName(k);
+						String av = xpp.getAttributeValue(k);
+						if (an.contentEquals("name"))
+						{
+							ac_nm = av;
+						}
+						else if (an.contentEquals("type"))
+						{
+							oa.setType(av);
+						}
+						else if (an.contentEquals("radius"))
+						{
+							oa.setRadius(Float.parseFloat(av));
+						}
+					}
 				}
 				else if (nodeName.contentEquals("texture"))
 				{
-					String tn=xpp.nextText();
-					Log.d("parser","texture: "+tn+"|"+jj);
+					String tn = xpp.nextText();
+					Log.d("parser", "texture: " + tn + "|" + jj);
 					vProjects.get(jj).addTexture(tn);
+					//oa.addTexture(tn);
 				}
 			}
-			
+
 			else if (eventType == XmlPullParser.END_TAG)
 			{
 				String nodeName = xpp.getName();
@@ -963,6 +1008,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 				if (nodeName.contentEquals("project"))
 				{
 					jj++;
+				}
+				if (nodeName.contentEquals("action"))
+				{
+
 				}
 			}
 			eventType = xpp.next();
@@ -976,6 +1025,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		HideTutorial();
 		mRenderer2.showProject(w);
 	}
+
 	public void initListeners()
 	{
 		mSensorManager.registerListener(this, mSensorManager
@@ -991,10 +1041,12 @@ public class ImageTargets extends Activity implements SensorEventListener
 				mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
 				SensorManager.SENSOR_DELAY_UI);
 	}
+
 	public void onAccuracyChanged(Sensor arg0, int arg1)
 	{
 
 	}
+
 	public void onSensorChanged(SensorEvent event)
 	{
 		hideLoading();
@@ -1020,6 +1072,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 				break;
 		}
 	}
+
 	public void gyroFunction(SensorEvent event)
 	{
 		if (timestamp * NS2S > 2)
@@ -1032,12 +1085,13 @@ public class ImageTargets extends Activity implements SensorEventListener
 					* event.values[2]);
 			if (omegaMagnitude > EPSILON && moving == true)
 			{
-				float rot =(float) Math.toDegrees(gyroVal * dT);
+				float rot = (float) Math.toDegrees(gyroVal * dT);
 				mRenderer2.doGyroRot(rot);
 			}
 		}
 		timestamp = event.timestamp;
 	}
+
 	public void accFunction(SensorEvent event)
 	{
 		float omegaMagnitude = (float) Math.sqrt(event.values[0]
@@ -1054,7 +1108,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 			moving = false;
 		}
 	}
-	
+
 	private void detectStep(SensorEvent event)
 	{
 		if (event == null) return;
@@ -1105,12 +1159,13 @@ public class ImageTargets extends Activity implements SensorEventListener
 			mLastValues[k] = v;
 		}
 	}
-	
+
 	public void onStep()
 	{
 		mRenderer2.onStep(step_len);
-		detecting=true;
+		detecting = true;
 	}
+
 	public void CreateTextMenu()
 	{
 		/* <build list of projects> */
@@ -1131,9 +1186,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 		HideTutorial();
 		HideMenu();
 	}
+
 	public void ShowHideMenu()
 	{
-		if(MenuVisible==true)
+		if (MenuVisible == true)
 		{
 			HideMenu();
 		}
@@ -1142,87 +1198,101 @@ public class ImageTargets extends Activity implements SensorEventListener
 			ShowMenu();
 		}
 	}
+
 	public void ShowMenu()
 	{
 		scrollContainer.setVisibility(View.VISIBLE);
 		mMenuBtn.setBackgroundResource(R.drawable.info_b);
 		HideTutorial();
-		MenuVisible=true;
+		MenuVisible = true;
 	}
+
 	public void HideMenu()
 	{
-		
+
 		scrollContainer.setVisibility(View.GONE);
 		mMenuBtn.setBackgroundResource(R.drawable.back_b);
-		MenuVisible=false;
+		MenuVisible = false;
 	}
+
 	public void ShowDefaultTutorial()
 	{
-		ShowTutorial("file://"+Environment.getExternalStorageDirectory()+"/"+dirname+"/"+tutorial);
+		ShowTutorial("file://" + Environment.getExternalStorageDirectory()
+				+ "/" + dirname + "/" + tutorial);
 	}
+
 	public void ShowProjectTutorial(int i)
 	{
-		String f=vProjects.get(i).htmlFile;
-		ShowTutorial("file://"+Environment.getExternalStorageDirectory()+"/"+dirname+"/"+f);
+		String f = vProjects.get(i).htmlFile;
+		ShowTutorial("file://" + Environment.getExternalStorageDirectory()
+				+ "/" + dirname + "/" + f);
 	}
+
 	public void ShowTutorial(String uri)
 	{
 		InfoText.loadUrl(uri);
 		InfoText.setVisibility(View.VISIBLE);
 		mInfoBtn.setBackgroundResource(R.drawable.info_b);
-		InfoVisible=true;
+		InfoVisible = true;
 	}
+
 	public void HideTutorial()
 	{
 		InfoText.setVisibility(View.GONE);
 		mInfoBtn.setBackgroundResource(R.drawable.back_b);
-		InfoVisible=false;
+		InfoVisible = false;
 	}
+
 	public void ShowHideTutorial()
 	{
-		Log.d("tutr","shown: "+InfoVisible);
-		if(InfoVisible==true)
+		Log.d("tutr", "shown: " + InfoVisible);
+		if (InfoVisible == true)
 		{
 			HideTutorial();
 		}
 		else
 		{
-			if(mRenderer2.doLoad==false)
+			if (mRenderer2.doLoad == false)
 			{
-				int c=mRenderer2.curProj;
+				int c = mRenderer2.curProj;
 				ShowProjectTutorial(c);
 			}
 			else
 			{
-			ShowDefaultTutorial();
+				ShowDefaultTutorial();
 			}
 		}
 	}
+
 	private class MyInfoClickListener implements OnClickListener
 	{
 		public MyInfoClickListener()
 		{
-			
+
 		}
+
 		public void onClick(View v)
 		{
 			ShowHideTutorial();
 		}
 	}
+
 	private class MyMMenuClickListener implements OnClickListener
 	{
 		public MyMMenuClickListener()
 		{
-			
+
 		}
+
 		public void onClick(View v)
 		{
 			ShowHideMenu();
 		}
 	}
+
 	private class MyMenuClickListener implements OnClickListener
 	{
-		private int				w;
+		private int	w;
 
 		public MyMenuClickListener(int w)
 		{

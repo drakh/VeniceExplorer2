@@ -7,18 +7,42 @@ public class ProjectLevel
 	public String					projectName;
 	public ArrayList<ProjectObject>	objs;
 	public ArrayList<String>		Textures;
-	public String					htmlFile="";
+	public ArrayList<String>		ActionNames;
+	public ArrayList<ObjectAction>	Actions;
+	public String					htmlFile	= "";
+	private int						ac			= 0;
 
 	ProjectLevel(String pn)
 	{
 		projectName = pn;
 		objs = new ArrayList<ProjectObject>();
 		Textures = new ArrayList<String>();
+		ActionNames = new ArrayList<String>();
+		Actions = new ArrayList<ObjectAction>();
 	}
+
+	public void addAction(String n, ObjectAction a)
+	{
+		ActionNames.add(ac, n);
+		Actions.add(ac, a);
+		ac++;
+	}
+
+	public ObjectAction getActionByName(String n)
+	{
+		int ai = ActionNames.indexOf(n);
+		if (ai != -1)
+		{
+			return Actions.get(ai);
+		}
+		else return null;
+	}
+
 	public void setHtml(String n)
 	{
-		htmlFile=n;
+		htmlFile = n;
 	}
+
 	public void addTexture(String tn)
 	{
 		if (!Textures.contains(tn))
