@@ -1477,6 +1477,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 			mRenderer2.stopVideo();
 			mRenderer2.setActions(false);
 		}
+		
 		if (PreviewRunning == false)
 		{
 			HideMenu();
