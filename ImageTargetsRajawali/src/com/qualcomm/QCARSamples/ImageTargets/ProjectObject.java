@@ -48,7 +48,14 @@ public class ProjectObject
 	{
 		modelName = path;
 	}
-
+	public void setVideoTexture(String t)
+	{
+		modelVideo=t;
+	}
+	public String getVideoTexture()
+	{
+		return modelVideo;
+	}
 	public void setInteractive(String ia)
 	{
 		if (ia.equalsIgnoreCase("true"))
@@ -96,10 +103,17 @@ public class ProjectObject
 		if (video == 1) r = true;
 		return r;
 	}
-
+	public int isInteractive()
+	{
+		return interactive;
+	}
 	public void SetActionName(String n)
 	{
 		ActionName = n;
+	}
+	public String getActionName()
+	{
+		return ActionName;
 	}
 
 }

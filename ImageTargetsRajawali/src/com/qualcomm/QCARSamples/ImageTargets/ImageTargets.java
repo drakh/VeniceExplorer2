@@ -1,5 +1,7 @@
 package com.qualcomm.QCARSamples.ImageTargets;
 
+import java.util.Date;
+import java.text.SimpleDateFormat;
 import android.view.ViewGroup;
 import java.io.File;
 import java.io.FileInputStream;
@@ -50,6 +52,11 @@ import android.content.Context;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 
+import org.w3c.dom.*;
+
+import javax.xml.parsers.*;
+import android.media.*;
+
 /** The main activity for the ImageTargets sample. */
 public class ImageTargets extends Activity implements SensorEventListener
 {
@@ -61,7 +68,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private static float			mScale[]						= new float[2];
 	private static float			mYOffset						= 0;
 	private static float			mLastDirections[]				= new float[3 * 2];
-	private static float			mLastExtremes[][]				= {new float[3 * 2], new float[3 * 2]};
+	private static float			mLastExtremes[][]				= { new float[3 * 2], new float[3 * 2] };
 	private static float			mLastDiff[]						= new float[3 * 2];
 	private static int				mLastMatch						= -1;
 	private int						steps							= 0;
@@ -74,16 +81,22 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private FrameLayout				mLayout;
 	private ScrollView				scrollContainer;
 	private FrameLayout				mGUI;
+	private FrameLayout				mRecord;
 	private TextView				mProjView;
 	private LinearLayout			mLL;
 	private SensorManager			mSensorManager					= null;
 	private TextView				mMenuBtn;
 	private TextView				mInfoBtn;
+	private TextView				mCommentsBtn;
+	private TextView				mRecordBtn;
+	private CameraPreview			mCameraView;
 	private boolean					MenuVisible						= true;
 	private boolean					InfoVisible						= true;
+	private boolean					PreviewRunning					= false;
+	private boolean					recording						= false;
 	private WebView					InfoText;
 	private float[]					orientation						= new float[3];
-
+	private MediaRecorder			recorder;
 	// setup
 	private String					filename						= "main.xml";
 	private String					dirname							= "VeniceViewer";
@@ -171,8 +184,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 					mProgressValue = QCAR.init();
 					publishProgress(mProgressValue);
 				}
-				while (!isCancelled() && mProgressValue >= 0
-						&& mProgressValue < 100);
+				while (!isCancelled() && mProgressValue >= 0 && mProgressValue < 100);
 
 				return (mProgressValue > 0);
 			}
@@ -188,26 +200,22 @@ public class ImageTargets extends Activity implements SensorEventListener
 			// initialization status:
 			if (result)
 			{
-				DebugLog.LOGD("InitQCARTask::onPostExecute: QCAR initialization"
-						+ " successful");
+				DebugLog.LOGD("InitQCARTask::onPostExecute: QCAR initialization" + " successful");
 
 				updateApplicationStatus(APPSTATUS_INIT_TRACKER);
 			}
 			else
 			{
 				// Create dialog box for display error:
-				AlertDialog dialogError = new AlertDialog.Builder(
-						ImageTargets.this).create();
-				dialogError.setButton("Close",
-						new DialogInterface.OnClickListener()
-						{
-							public void onClick(DialogInterface dialog,
-									int which)
-							{
-								// Exiting application
-								System.exit(1);
-							}
-						});
+				AlertDialog dialogError = new AlertDialog.Builder(ImageTargets.this).create();
+				dialogError.setButton("Close", new DialogInterface.OnClickListener()
+				{
+					public void onClick(DialogInterface dialog, int which)
+					{
+						// Exiting application
+						System.exit(1);
+					}
+				});
 
 				String logMessage;
 
@@ -216,8 +224,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 				// with a message.
 				if (mProgressValue == QCAR.INIT_DEVICE_NOT_SUPPORTED)
 				{
-					logMessage = "Failed to initialize QCAR because this "
-							+ "device is not supported.";
+					logMessage = "Failed to initialize QCAR because this " + "device is not supported.";
 				}
 				else
 				{
@@ -225,8 +232,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 				}
 
 				// Log error:
-				DebugLog.LOGE("InitQCARTask::onPostExecute: " + logMessage
-						+ " Exiting.");
+				DebugLog.LOGE("InitQCARTask::onPostExecute: " + logMessage + " Exiting.");
 
 				// Show dialog box with error message:
 				dialogError.setMessage(logMessage);
@@ -250,8 +256,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 		protected void onPostExecute(Boolean result)
 		{
-			DebugLog.LOGD("LoadTrackerTask::onPostExecute: execution "
-					+ (result ? "successful" : "failed"));
+			DebugLog.LOGD("LoadTrackerTask::onPostExecute: execution " + (result ? "successful" : "failed"));
 
 			if (result)
 			{
@@ -264,18 +269,15 @@ public class ImageTargets extends Activity implements SensorEventListener
 			else
 			{
 				// Create dialog box for display error:
-				AlertDialog dialogError = new AlertDialog.Builder(
-						ImageTargets.this).create();
-				dialogError.setButton("Close",
-						new DialogInterface.OnClickListener()
-						{
-							public void onClick(DialogInterface dialog,
-									int which)
-							{
-								// Exiting application
-								System.exit(1);
-							}
-						});
+				AlertDialog dialogError = new AlertDialog.Builder(ImageTargets.this).create();
+				dialogError.setButton("Close", new DialogInterface.OnClickListener()
+				{
+					public void onClick(DialogInterface dialog, int which)
+					{
+						// Exiting application
+						System.exit(1);
+					}
+				});
 
 				// Show dialog box with error message:
 				dialogError.setMessage("Failed to load tracker data.");
@@ -303,10 +305,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 		setRequestedOrientation(screenOrientation);
 		setActivityPortraitMode(screenOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 		storeScreenDimensions();
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
-				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		getWindow().getDecorView().setSystemUiVisibility(
-				View.SYSTEM_UI_FLAG_LOW_PROFILE);
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
 		DebugLog.LOGD("ImageTargets::onCreate");
 		chkConfig();
 		super.onCreate(savedInstanceState);
@@ -319,9 +319,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 		/* menu */
 		scrollContainer = new ScrollView(this);
-		scrollContainer.setLayoutParams(new ViewGroup.LayoutParams(300,
-				mScreenHeight - 100));
-		scrollContainer.setY(50f);
+		scrollContainer.setLayoutParams(new ViewGroup.LayoutParams(300, mScreenHeight - 160));
+		scrollContainer.setY(90f);
 		mLL = new LinearLayout(this);
 		mLL.setOrientation(LinearLayout.VERTICAL);
 		mLL.setGravity(Gravity.TOP);
@@ -333,9 +332,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 		/* info text */
 		InfoText = new WebView(this);
-		InfoText.setLayoutParams(new ViewGroup.LayoutParams(mScreenWidth - 600,
-				mScreenHeight - 100));
-		InfoText.setY(50f);
+		InfoText.setLayoutParams(new ViewGroup.LayoutParams(mScreenWidth - 600, mScreenHeight - 160));
+		InfoText.setY(90f);
 		InfoText.setX(300f);
 		InfoText.setBackgroundColor(Color.WHITE);
 		InfoText.setAlpha(0.5f);
@@ -344,15 +342,15 @@ public class ImageTargets extends Activity implements SensorEventListener
 		/* info button */
 		mInfoBtn = new TextView(this);
 		mInfoBtn.setBackgroundResource(R.drawable.back_b);
-		mInfoBtn.setLayoutParams(new ViewGroup.LayoutParams(90, 25));
+		mInfoBtn.setLayoutParams(new ViewGroup.LayoutParams(180, 50));
 		mInfoBtn.setText("Info");
-		mInfoBtn.setX(mScreenWidth - 110);
-		mInfoBtn.setY(mScreenHeight - 45);
+		mInfoBtn.setX(mScreenWidth - 200);
+		mInfoBtn.setY(mScreenHeight - 70);
 		mInfoBtn.setGravity(Gravity.RIGHT);
 		mInfoBtn.setTextColor(Color.DKGRAY);
 		mInfoBtn.setShadowLayer(2f, 2f, 2f, Color.LTGRAY);
-		mInfoBtn.setTextSize(14);
-		mInfoBtn.setPadding(0, 0, 10, 0);
+		mInfoBtn.setTextSize(20);
+		mInfoBtn.setPadding(0, 8, 20, 0);
 		mInfoBtn.setClickable(true);
 		MyInfoClickListener mic = new MyInfoClickListener();
 		mInfoBtn.setOnClickListener(mic);
@@ -361,19 +359,36 @@ public class ImageTargets extends Activity implements SensorEventListener
 		/* menu button */
 		mMenuBtn = new TextView(this);
 		mMenuBtn.setBackgroundResource(R.drawable.back_b);
-		mMenuBtn.setLayoutParams(new ViewGroup.LayoutParams(90, 25));
+		mMenuBtn.setLayoutParams(new ViewGroup.LayoutParams(180, 50));
 		mMenuBtn.setText("Menu");
-		mMenuBtn.setX(10);
-		mMenuBtn.setY(15);
+		mMenuBtn.setX(20);
+		mMenuBtn.setY(20);
 		mMenuBtn.setGravity(Gravity.RIGHT);
 		mMenuBtn.setTextColor(Color.DKGRAY);
 		mMenuBtn.setShadowLayer(2f, 2f, 2f, Color.LTGRAY);
-		mMenuBtn.setTextSize(14);
-		mMenuBtn.setPadding(0, 0, 10, 0);
+		mMenuBtn.setTextSize(20);
+		mMenuBtn.setPadding(0, 8, 20, 0);
 		mMenuBtn.setClickable(true);
 		MyMMenuClickListener mmc = new MyMMenuClickListener();
 		mMenuBtn.setOnClickListener(mmc);
 		mGUI.addView(mMenuBtn);
+
+		/* comments btn */
+		mCommentsBtn = new TextView(this);
+		mCommentsBtn.setBackgroundResource(R.drawable.comment_b);
+		mCommentsBtn.setLayoutParams(new ViewGroup.LayoutParams(180, 66));
+		mCommentsBtn.setText("Add comment");
+		mCommentsBtn.setX(mScreenWidth - 200);
+		mCommentsBtn.setY(20);
+		mCommentsBtn.setGravity(Gravity.RIGHT);
+		mCommentsBtn.setTextColor(Color.DKGRAY);
+		mCommentsBtn.setShadowLayer(2f, 2f, 2f, Color.LTGRAY);
+		mCommentsBtn.setTextSize(20);
+		mCommentsBtn.setPadding(0, 8, 20, 0);
+		mCommentsBtn.setClickable(true);
+		MyCommentsClickListener mcc = new MyCommentsClickListener();
+		mCommentsBtn.setOnClickListener(mcc);
+		mGUI.addView(mCommentsBtn);
 
 		/* project name */
 		mProjView = new TextView(this);
@@ -384,6 +399,33 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mProjView.setShadowLayer(2f, 2f, 2f, Color.BLACK);
 		mProjView.setPadding(10, 10, 0, 10);
 		mGUI.addView(mProjView);
+
+		mRecord = new FrameLayout(this);
+		mRecord.setBackgroundColor(Color.LTGRAY);
+		mRecord.setLayoutParams(new ViewGroup.LayoutParams(650, 355));
+		mRecord.setX(mScreenWidth - 670);
+		mRecord.setY(86);
+
+		mRecordBtn = new TextView(this);
+		mRecordBtn.setTextSize(20);
+		mRecordBtn.setBackgroundResource(R.drawable.back_b_r);
+		mRecordBtn.setLayoutParams(new ViewGroup.LayoutParams(180, 50));
+		mRecordBtn.setText("record comment");
+		mRecordBtn.setX(450);
+		mRecordBtn.setY(285);
+		mRecordBtn.setGravity(Gravity.RIGHT);
+		mRecordBtn.setTextColor(Color.WHITE);
+		mRecordBtn.setShadowLayer(2f, 2f, 2f, Color.DKGRAY);
+		mRecordBtn.setTextSize(20);
+		mRecordBtn.setPadding(0, 8, 15, 0);
+		mRecordBtn.setClickable(true);
+		MyRecordClickListener mrc = new MyRecordClickListener();
+		mRecordBtn.setOnClickListener(mrc);
+		mRecord.addView(mRecordBtn);
+
+		mRecord.setVisibility(View.GONE);
+
+		mGUI.addView(mRecord);
 
 		/* splash screen */
 		mSplashScreenImageResource = R.drawable.splash_screen_image_targets;
@@ -465,8 +507,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 			if (mFlash)
 			{
 				boolean result = activateFlash(mFlash);
-				DebugLog.LOGI("Turning flash " + (mFlash ? "ON" : "OFF") + " "
-						+ (result ? "WORKED" : "FAILED") + "!!");
+				DebugLog.LOGI("Turning flash " + (mFlash ? "ON" : "OFF") + " " + (result ? "WORKED" : "FAILED") + "!!");
 			}
 		}
 
@@ -533,15 +574,13 @@ public class ImageTargets extends Activity implements SensorEventListener
 		}
 
 		// Cancel potentially running tasks
-		if (mInitQCARTask != null
-				&& mInitQCARTask.getStatus() != InitQCARTask.Status.FINISHED)
+		if (mInitQCARTask != null && mInitQCARTask.getStatus() != InitQCARTask.Status.FINISHED)
 		{
 			mInitQCARTask.cancel(true);
 			mInitQCARTask = null;
 		}
 
-		if (mLoadTrackerTask != null
-				&& mLoadTrackerTask.getStatus() != LoadTrackerTask.Status.FINISHED)
+		if (mLoadTrackerTask != null && mLoadTrackerTask.getStatus() != LoadTrackerTask.Status.FINISHED)
 		{
 			mLoadTrackerTask.cancel(true);
 			mLoadTrackerTask = null;
@@ -634,13 +673,11 @@ public class ImageTargets extends Activity implements SensorEventListener
 			case APPSTATUS_INITED:
 				System.gc();
 				onQCARInitializedNative();
-				long splashScreenTime = System.currentTimeMillis()
-						- mSplashScreenStartTime;
+				long splashScreenTime = System.currentTimeMillis() - mSplashScreenStartTime;
 				long newSplashScreenTime = 0;
 				if (splashScreenTime < MIN_SPLASH_SCREEN_TIME)
 				{
-					newSplashScreenTime = MIN_SPLASH_SCREEN_TIME
-							- splashScreenTime;
+					newSplashScreenTime = MIN_SPLASH_SCREEN_TIME - splashScreenTime;
 				}
 				mLoadingHandler = new Handler()
 				{
@@ -664,8 +701,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 					}
 				};
 
-				mSplashScreenHandler.postDelayed(mSplashScreenRunnable,
-						newSplashScreenTime);
+				mSplashScreenHandler.postDelayed(mSplashScreenRunnable, newSplashScreenTime);
 				break;
 
 			case APPSTATUS_CAMERA_STOPPED:
@@ -724,10 +760,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 				mRenderer2.setDockingPos();
 			}
 		};
-		this.registerReceiver(batteryPluged, new IntentFilter(
-				Intent.ACTION_POWER_CONNECTED));
-		this.registerReceiver(batteryUnplugged, new IntentFilter(
-				Intent.ACTION_POWER_DISCONNECTED));
+		this.registerReceiver(batteryPluged, new IntentFilter(Intent.ACTION_POWER_CONNECTED));
+		this.registerReceiver(batteryUnplugged, new IntentFilter(Intent.ACTION_POWER_DISCONNECTED));
 
 	}
 
@@ -740,6 +774,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void hideGUI()
 	{
+		HidePreview();
 		mProjView.setText("");
 		mGUI.setVisibility(View.GONE);
 		mRenderer2.resetRenderer();
@@ -778,7 +813,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void setPos(String n, float[] mMV)
 	{
-		mRenderer2.setPosition(n, mMV);
+		if (mRenderer2 != null) mRenderer2.setPosition(n, mMV);
 	}
 
 	/** Tells native code to switch dataset as soon as possible */
@@ -803,20 +838,17 @@ public class ImageTargets extends Activity implements SensorEventListener
 		}
 		catch (UnsatisfiedLinkError ulee)
 		{
-			DebugLog.LOGE("The library lib" + nLibName
-					+ ".so could not be loaded");
+			DebugLog.LOGE("The library lib" + nLibName + ".so could not be loaded");
 		}
 		catch (SecurityException se)
 		{
-			DebugLog.LOGE("The library lib" + nLibName
-					+ ".so was not allowed to be loaded");
+			DebugLog.LOGE("The library lib" + nLibName + ".so was not allowed to be loaded");
 		}
 
 		return false;
 	}
 
-	private Camera.Size getBestPreviewSize(int width, int height,
-			Camera.Parameters p)
+	private Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters p)
 	{
 		Camera.Size result = null;
 		for (Camera.Size size : p.getSupportedPreviewSizes())
@@ -844,183 +876,244 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void chkConfig()
 	{
-		Log.d("main", "checkit");
-		File folder = new File(Environment.getExternalStorageDirectory() + "/"
-				+ dirname);
+		// Log.d("main", "checkit");
+		File folder = new File(Environment.getExternalStorageDirectory() + "/" + dirname);
 		if (!folder.exists())
 		{
 			folder.mkdir();
 		}
-		folder = new File(Environment.getExternalStorageDirectory() + "/"
-				+ dirname + "/" + filename);
-		try
+		folder = new File(Environment.getExternalStorageDirectory() + "/" + dirname + "/videos/");
+		if (!folder.exists())
 		{
-			vProjects = new ArrayList();
-			parseXML(folder, dirname);
+			folder.mkdir();
 		}
-		catch (XmlPullParserException e)
-		{
-			Log.d("main", "xml error");
-		}
-		catch (IOException e)
-		{
-			Log.d("main", "io error");
 
-		}
+		folder = new File(Environment.getExternalStorageDirectory() + "/" + dirname + "/" + filename);
+		parseXML(folder, dirname);
 
 	}
 
-	public void parseXML(File file, String dirn) throws XmlPullParserException,
-			IOException
+	public void parseXML(File f, String dirn)
 	{
-		Log.d("main", "xml parser?");
-		XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-		factory.setNamespaceAware(true);
-		XmlPullParser xpp = factory.newPullParser();
-		FileInputStream fis = new FileInputStream(file);
-		xpp.setInput(new InputStreamReader(fis));
-		int eventType = xpp.getEventType();
-		int jj = 0;
-		ProjectObject po;
-		ObjectAction oa = new ObjectAction();
-		;
-		String ac_nm = "";
-		String ac_a = "";
-		while (eventType != XmlPullParser.END_DOCUMENT)
+		vProjects = new ArrayList();
+		try
 		{
-			if (eventType == XmlPullParser.START_DOCUMENT)
+			Log.d("xmlparse", "try");
+			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+			FileInputStream is = new FileInputStream(f);
+
+			Document doc = builder.parse(is, null);
+			Element root = doc.getDocumentElement();
+			if (root.hasAttribute("fov"))
 			{
-				Log.d("main", "tralala");
+				FOV = Float.parseFloat(root.getAttribute("fov"));
 			}
-			else if (eventType == XmlPullParser.START_TAG)
+			if (root.hasAttribute("htmlfile"))
 			{
-				String nodeName = xpp.getName();
-				Log.d("main", nodeName);
-				if (nodeName.contentEquals("venice"))
-				{
-					for (int k = 0; k < xpp.getAttributeCount(); k++)
-					{
-						String an = xpp.getAttributeName(k);
-						String av = xpp.getAttributeValue(k);
-
-						if (an.contentEquals("htmlfile"))
-						{
-							tutorial = av;
-						}
-						else if(an.contentEquals("fov"))
-						{
-							FOV=Float.parseFloat(av);
-						}
-
-					}
-				}
-				else if (nodeName.contentEquals("project"))
-				{
-					ac_nm = "";
-					ac_a = "";
-					for (int k = 0; k < xpp.getAttributeCount(); k++)
-					{
-						String an = xpp.getAttributeName(k);
-						String av = xpp.getAttributeValue(k);
-						if (an.contentEquals("name"))
-						{
-							vProjects.add(jj, new ProjectLevel(av));
-						}
-						else if (an.contentEquals("htmlfile"))
-						{
-							vProjects.get(jj).setHtml(av);
-						}
-
-					}
-				}
-				else if (nodeName.contentEquals("object"))
-				{
-					po = new ProjectObject();
-					for (int k = 0; k < xpp.getAttributeCount(); k++)
-					{
-						String an = xpp.getAttributeName(k);
-						String av = xpp.getAttributeValue(k);
-						if (an.contentEquals("model"))
-						{
-							po.setModel(av);
-						}
-						else if (an.contentEquals("texture"))
-						{
-							Log.d("parser", "texture attribute: " + av + "|"
-									+ jj);
-							vProjects.get(jj).addTexture(av);
-							po.setTexture(av);
-						}
-						else if (an.contentEquals("doublesided"))
-						{
-							po.setDS(av);
-						}
-						else if (an.contentEquals("usevideo"))
-						{
-							po.setVideo(av);
-						}
-						else if (an.contentEquals("interactive"))
-						{
-							po.setInteractive(av);
-						}
-						else if (an.contentEquals("visible"))
-						{
-							po.setVisible(av);
-						}
-						else if (an.contentEquals("action"))
-						{
-							po.SetActionName(av);
-						}
-					}
-					vProjects.get(jj).addModel(po);
-				}
-
-				else if (nodeName.contentEquals("action"))
-				{
-					oa = new ObjectAction();
-					for (int k = 0; k < xpp.getAttributeCount(); k++)
-					{
-						String an = xpp.getAttributeName(k);
-						String av = xpp.getAttributeValue(k);
-						if (an.contentEquals("name"))
-						{
-							ac_nm = av;
-						}
-						else if (an.contentEquals("type"))
-						{
-							oa.setType(av);
-						}
-						else if (an.contentEquals("radius"))
-						{
-							oa.setRadius(Float.parseFloat(av));
-						}
-					}
-				}
-				else if (nodeName.contentEquals("texture"))
-				{
-					String tn = xpp.nextText();
-					Log.d("parser", "texture: " + tn + "|" + jj);
-					vProjects.get(jj).addTexture(tn);
-					//oa.addTexture(tn);
-				}
+				tutorial = root.getAttribute("htmlfile");
 			}
 
-			else if (eventType == XmlPullParser.END_TAG)
+			NodeList projects = root.getElementsByTagName("project");
+			for (int i = 0; i < projects.getLength(); i++)
 			{
-				String nodeName = xpp.getName();
-				Log.d("parser", "end node: " + nodeName);
-				if (nodeName.contentEquals("project"))
+				Element project = (Element) projects.item(i);
+				String pn = project.getAttribute("name");
+				ProjectLevel pl = new ProjectLevel(pn);
+				Log.d("project", pn);
+				if (project.hasAttribute("htmlfile"))
 				{
-					jj++;
+					pl.setHtml(project.getAttribute("htmlfile"));
 				}
-				if (nodeName.contentEquals("action"))
-				{
 
+				NodeList textures = project.getElementsByTagName("texture");
+				for (int j = 0; j < textures.getLength(); j++)
+				{
+					Element tex = (Element) textures.item(j);
+					pl.addTexture(tex.getTextContent());
 				}
+
+				NodeList actions = project.getElementsByTagName("action");
+				for (int j = 0; j < actions.getLength(); j++)
+				{
+					ObjectAction oa = new ObjectAction();
+
+					Element act = (Element) actions.item(j);
+					String act_t = act.getAttribute("type");
+					String act_n = act.getAttribute("name");
+					oa.setType(act_t);
+
+					if (act_t.contentEquals("s") || act_t.contentEquals("c"))// square,
+																				// circle
+					{
+						oa.setRadius(Float.parseFloat(act.getAttribute("radius")));// save
+																					// action
+																					// radius
+						NodeList oas = act.getChildNodes();
+						for (int oas_i = 0; oas_i < oas.getLength(); oas_i++)
+						{
+							if (oas.item(oas_i).getNodeType() == 1)
+							{
+								if (oas.item(oas_i).getNodeName().contentEquals("onenter"))
+								{
+									NodeList acts = oas.item(oas_i).getChildNodes();
+									for (int acts_i = 0; acts_i < acts.getLength(); acts_i++)
+									{
+										if (acts.item(acts_i).getNodeType() == 1)
+										{
+											Element acts_n = (Element) acts.item(acts_i);
+											String actn_name = acts.item(acts_i).getNodeName();
+											oAction obja = new oAction();
+											obja.setType(actn_name);
+											ParseAction(obja, actn_name, acts_n);
+											oa.onEnter = obja;
+											break;
+										}
+									}
+
+								}
+								else if (oas.item(oas_i).getNodeName().contentEquals("onleave"))
+								{
+									NodeList acts = oas.item(oas_i).getChildNodes();
+									for (int acts_i = 0; acts_i < acts.getLength(); acts_i++)
+									{
+										if (acts.item(acts_i).getNodeType() == 1)
+										{
+											Element acts_n = (Element) acts.item(acts_i);
+											String actn_name = acts.item(acts_i).getNodeName();
+											oAction obja = new oAction();
+											obja.setType(actn_name);
+											ParseAction(obja, actn_name, acts_n);
+											oa.onLeave = obja;
+											break;
+										}
+									}
+								}
+							}
+						}
+					}
+					else if (act_t.contentEquals("p"))// plane
+					{
+						int oas_i = 0;
+						NodeList oas = act.getElementsByTagName("oncross");
+						if (oas.getLength() > 0)
+						{
+							NodeList acts = oas.item(oas_i).getChildNodes();
+							for (int acts_i = 0; acts_i < acts.getLength(); acts_i++)
+							{
+								if (acts.item(acts_i).getNodeType() == 1)
+								{
+									Element acts_n = (Element) acts.item(acts_i);
+									String actn_name = acts.item(acts_i).getNodeName();
+									oAction obja = new oAction();
+									obja.setType(actn_name);
+									ParseAction(obja, actn_name, acts_n);
+									oa.onCross = obja;
+									break;
+								}
+							}
+						}
+					}
+					else if (act_t.contentEquals("b"))// bind to axes
+					{
+						NodeList axes = act.getElementsByTagName("axe");
+						for (int axes_i = 0; axes_i < axes.getLength(); axes_i++)
+						{
+							Element axe = (Element) axes.item(axes_i);
+							oa.addAxes(axe.getTextContent());
+						}
+					}
+					pl.addAction(act_n, oa);
+				}
+
+				NodeList objects = project.getElementsByTagName("object");
+				for (int j = 0; j < objects.getLength(); j++)
+				{
+					ProjectObject po = new ProjectObject();
+
+					Element obj = (Element) objects.item(j);
+					if (obj.hasAttribute("model"))
+					{
+						po.setModel(obj.getAttribute("model"));
+					}
+					if (obj.hasAttribute("texture"))
+					{
+						pl.addTexture(obj.getAttribute("texture"));
+						po.setTexture(obj.getAttribute("texture"));
+					}
+					if (obj.hasAttribute("doublesided"))
+					{
+						po.setDS(obj.getAttribute("doublesided"));
+					}
+					if (obj.hasAttribute("usevideo"))
+					{
+						po.setVideo(obj.getAttribute("usevideo"));
+					}
+					if (obj.hasAttribute("video"))
+					{
+						po.setVideoTexture(obj.getAttribute("video"));
+					}
+					if (obj.hasAttribute("interactive"))
+					{
+						po.setInteractive(obj.getAttribute("interactive"));
+					}
+					if (obj.hasAttribute("visible"))
+					{
+						po.setVisible(obj.getAttribute("visible"));
+					}
+					if (obj.hasAttribute("action"))
+					{
+						po.SetActionName(obj.getAttribute("action"));
+					}
+					pl.addModel(po);
+				}
+				vProjects.add(i, pl);
 			}
-			eventType = xpp.next();
 		}
-		Log.d("main", "Num projects: " + vProjects.size());
+		catch (Exception e)
+		{
+			// Log.d("xmlparser", "failed: ");
+			e.printStackTrace();
+		}
+	}
+
+	public void ParseAction(oAction obja, String actn_name, Element acts_n)
+	{
+		if (actn_name.contentEquals("changetexture"))
+		{
+			NodeList texn = acts_n.getElementsByTagName("texture");
+			for (int texn_i = 0; texn_i < texn.getLength(); texn_i++)
+			{
+				Element tx = (Element) texn.item(texn_i);
+				obja.addTexture(tx.getTextContent());
+			}
+		}
+		else if (actn_name.contentEquals("showmodels"))
+		{
+			NodeList texn = acts_n.getElementsByTagName("models");
+			for (int texn_i = 0; texn_i < texn.getLength(); texn_i++)
+			{
+				Element tx = (Element) texn.item(texn_i);
+				obja.addObject(tx.getTextContent());
+			}
+		}
+		else if (actn_name.contentEquals("hidemodels"))
+		{
+			NodeList texn = acts_n.getElementsByTagName("models");
+			for (int texn_i = 0; texn_i < texn.getLength(); texn_i++)
+			{
+				Element tx = (Element) texn.item(texn_i);
+				obja.addObject(tx.getTextContent());
+			}
+		}
+		else if (actn_name.contentEquals("playaudio"))
+		{
+			NodeList texn = acts_n.getElementsByTagName("file");
+			for (int texn_i = 0; texn_i < texn.getLength(); texn_i++)
+			{
+				Element tx = (Element) texn.item(texn_i);
+				obja.addAudio(tx.getTextContent());
+			}
+		}
 	}
 
 	public void SelectProject(int w)
@@ -1032,18 +1125,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void initListeners()
 	{
-		mSensorManager.registerListener(this, mSensorManager
-				.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
-				SensorManager.SENSOR_DELAY_UI);
-		mSensorManager.registerListener(this,
-				mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION),
-				SensorManager.SENSOR_DELAY_UI);
-		mSensorManager.registerListener(this,
-				mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-				SensorManager.SENSOR_DELAY_UI);
-		mSensorManager.registerListener(this,
-				mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-				SensorManager.SENSOR_DELAY_UI);
+		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION), SensorManager.SENSOR_DELAY_UI);
+		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_UI);
+		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_UI);
+		mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SensorManager.SENSOR_DELAY_UI);
 	}
 
 	public void onAccuracyChanged(Sensor arg0, int arg1)
@@ -1064,7 +1149,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 				orientation[0] = event.values[1] + 180;
 				orientation[1] = event.values[0];
 				orientation[2] = event.values[2];
-				mRenderer2.doOrientationRot(orientation[0]);
+				if (mRenderer2 != null) mRenderer2.doOrientationRot(orientation[0]);
 				if (!detecting)
 				{
 					detecting = true;
@@ -1084,13 +1169,11 @@ public class ImageTargets extends Activity implements SensorEventListener
 			final float dT = (event.timestamp - timestamp) * NS2S;
 			final float rot_v = event.values[1];
 			gyroVal += (rot_v - gyroVal) / 10;
-			float omegaMagnitude = (float) Math.sqrt(event.values[0]
-					* event.values[0] + gyroVal * gyroVal + event.values[2]
-					* event.values[2]);
+			float omegaMagnitude = (float) Math.sqrt(event.values[0] * event.values[0] + gyroVal * gyroVal + event.values[2] * event.values[2]);
 			if (omegaMagnitude > EPSILON && moving == true)
 			{
 				float rot = (float) Math.toDegrees(gyroVal * dT);
-				mRenderer2.doGyroRot(rot);
+				if (mRenderer2 != null) mRenderer2.doGyroRot(rot);
 			}
 		}
 		timestamp = event.timestamp;
@@ -1098,9 +1181,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void accFunction(SensorEvent event)
 	{
-		float omegaMagnitude = (float) Math.sqrt(event.values[0]
-				* event.values[0] + event.values[1] * event.values[1]
-				+ event.values[2] * event.values[2]);
+		float omegaMagnitude = (float) Math.sqrt(event.values[0] * event.values[0] + event.values[1] * event.values[1] + event.values[2] * event.values[2]);
 		float prevAcc = accVal;
 		accVal += (omegaMagnitude - accVal) / 2.5;
 		if (Math.abs(prevAcc - accVal) >= 0.02)
@@ -1128,16 +1209,14 @@ public class ImageTargets extends Activity implements SensorEventListener
 			int k = 0;
 			float v = vSum / 3;
 
-			float direction = (v > mLastValues[k] ? 1
-					: (v < mLastValues[k] ? -1 : 0));
+			float direction = (v > mLastValues[k] ? 1 : (v < mLastValues[k] ? -1 : 0));
 			if (direction == -mLastDirections[k])
 			{
 				// Direction changed
 				int extType = (direction > 0 ? 0 : 1); // minumum or
 														// maximum?
 				mLastExtremes[extType][k] = mLastValues[k];
-				float diff = Math.abs(mLastExtremes[extType][k]
-						- mLastExtremes[1 - extType][k]);
+				float diff = Math.abs(mLastExtremes[extType][k] - mLastExtremes[1 - extType][k]);
 
 				if (diff > mLimit)
 				{
@@ -1146,8 +1225,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 					boolean isPreviousLargeEnough = mLastDiff[k] > (diff / 3);
 					boolean isNotContra = (mLastMatch != 1 - extType);
 
-					if (isAlmostAsLargeAsPrevious && isPreviousLargeEnough
-							&& isNotContra)
+					if (isAlmostAsLargeAsPrevious && isPreviousLargeEnough && isNotContra)
 					{
 						onStep();
 						mLastMatch = extType;
@@ -1166,7 +1244,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void onStep()
 	{
-		mRenderer2.onStep(step_len);
+		if (mRenderer2 != null) mRenderer2.onStep(step_len);
 		detecting = true;
 	}
 
@@ -1209,6 +1287,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mMenuBtn.setBackgroundResource(R.drawable.info_b);
 		HideTutorial();
 		MenuVisible = true;
+		// stopCamera();
+		// Camera c=Camera.open(1);
 	}
 
 	public void HideMenu()
@@ -1221,15 +1301,13 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void ShowDefaultTutorial()
 	{
-		ShowTutorial("file://" + Environment.getExternalStorageDirectory()
-				+ "/" + dirname + "/" + tutorial);
+		ShowTutorial("file://" + Environment.getExternalStorageDirectory() + "/" + dirname + "/" + tutorial);
 	}
 
 	public void ShowProjectTutorial(int i)
 	{
 		String f = vProjects.get(i).htmlFile;
-		ShowTutorial("file://" + Environment.getExternalStorageDirectory()
-				+ "/" + dirname + "/" + f);
+		ShowTutorial("file://" + Environment.getExternalStorageDirectory() + "/" + dirname + "/" + f);
 	}
 
 	public void ShowTutorial(String uri)
@@ -1249,7 +1327,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void ShowHideTutorial()
 	{
-		Log.d("tutr", "shown: " + InfoVisible);
+		// Log.d("tutr", "shown: " + InfoVisible);
 		if (InfoVisible == true)
 		{
 			HideTutorial();
@@ -1281,6 +1359,32 @@ public class ImageTargets extends Activity implements SensorEventListener
 		}
 	}
 
+	private class MyCommentsClickListener implements OnClickListener
+	{
+		public MyCommentsClickListener()
+		{
+
+		}
+
+		public void onClick(View v)
+		{
+			StartStopPreview();
+		}
+	}
+
+	private class MyRecordClickListener implements OnClickListener
+	{
+		public MyRecordClickListener()
+		{
+
+		}
+
+		public void onClick(View v)
+		{
+			StartStopRecord();
+		}
+	}
+
 	private class MyMMenuClickListener implements OnClickListener
 	{
 		public MyMMenuClickListener()
@@ -1291,6 +1395,145 @@ public class ImageTargets extends Activity implements SensorEventListener
 		public void onClick(View v)
 		{
 			ShowHideMenu();
+		}
+	}
+
+	private void StartStopRecord()
+	{
+		if (recording == false)
+		{
+			StartRecord();
+		}
+		else
+		{
+			StopRecord();
+		}
+	}
+
+	public void StartRecord()
+	{
+		if (recording == false)
+		{
+			mCameraView.mVCamera.unlock();
+			recorder = new MediaRecorder();
+			recorder.setCamera(mCameraView.mVCamera);
+			recorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+			recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+			recorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_720P));
+			float x = 0;
+			float y = 0;
+			String projname = "noproject";
+			if (mRenderer2 != null)
+			{
+				x = mRenderer2.camPos.x;
+				y = mRenderer2.camPos.z;
+				if (mRenderer2.doLoad == false)
+				{
+					int cp = mRenderer2.curProj;
+					projname = vProjects.get(cp).getName();
+				}
+			}
+			String dt = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date());
+			recorder.setOutputFile(Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + dirname + "/videos/" + dt + "|x:" + x + "|y:" + y + "|project:" + projname + ".3gp");
+			recorder.setPreviewDisplay(mCameraView.getHolder().getSurface());
+			try
+			{
+				recorder.prepare();
+				recorder.start();
+				mRecordBtn.setBackgroundResource(R.drawable.info_b_r);
+				mRecordBtn.setText("stop recording");
+				recording = true;
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+				recorder.reset();
+				recorder.release();
+				recorder = null;
+			}
+		}
+	}
+
+	public void StopRecord()
+	{
+		if (recording == true)
+		{
+			recorder.stop();
+			recorder.reset();
+			recorder.release();
+			mRecordBtn.setBackgroundResource(R.drawable.back_b_r);
+			mRecordBtn.setText("record comment");
+			recorder = null;
+			recording = false;
+		}
+	}
+
+	public void ShowPreview()
+	{
+		mRecord.setVisibility(View.VISIBLE);
+		if (mRenderer2 != null)
+		{
+			mRenderer2.stopAudio();
+			mRenderer2.stopVideo();
+			mRenderer2.setActions(false);
+		}
+		if (PreviewRunning == false)
+		{
+			HideMenu();
+			HideTutorial();
+			mMenuBtn.setVisibility(View.GONE);
+			mInfoBtn.setVisibility(View.GONE);
+			stopCamera();
+
+			if (mCameraView == null)
+			{
+				mCameraView = new CameraPreview(this);
+				mCameraView.setLayoutParams(new ViewGroup.LayoutParams(420, 315));
+				mCameraView.setX(20f);
+				mCameraView.setY(20f);
+				mCameraView.setZOrderOnTop(true);
+				mRecord.addView(mCameraView);
+			}
+			else
+			{
+				mCameraView.setVisibility(View.VISIBLE);
+				mCameraView.setZOrderOnTop(true);
+				mCameraView.startPreview();
+			}
+			PreviewRunning = true;
+		}
+		mCommentsBtn.setText("Close");
+	}
+
+	public void HidePreview()
+	{
+		StopRecord();
+		mMenuBtn.setVisibility(View.VISIBLE);
+		mInfoBtn.setVisibility(View.VISIBLE);
+		if (PreviewRunning == true)
+		{
+			mCameraView.stopPreview();
+			startCamera();
+			PreviewRunning = false;
+			System.gc();
+		}
+		mCameraView.setZOrderOnTop(false);
+		mCameraView.setVisibility(View.GONE);
+		mRecord.setVisibility(View.GONE);
+		mCommentsBtn.setText("Add coment");
+		mRenderer2.setActions(true);
+
+	}
+
+	public void StartStopPreview()
+	{
+		if (PreviewRunning == false)
+		{
+			ShowPreview();
+		}
+		else
+		{
+			HidePreview();
 		}
 	}
 

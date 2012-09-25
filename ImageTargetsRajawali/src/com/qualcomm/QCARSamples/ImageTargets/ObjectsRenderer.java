@@ -1,5 +1,7 @@
 package com.qualcomm.QCARSamples.ImageTargets;
 
+import java.nio.Buffer;
+import rajawali.util.BufferUtil;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 import android.opengl.Matrix;
@@ -9,6 +11,7 @@ import android.widget.ImageView;
 import android.os.Environment;
 import rajawali.renderer.RajawaliRenderer;
 import rajawali.util.RajLog;
+import android.R.plurals;
 import android.content.Context;
 import rajawali.BaseObject3D;
 import rajawali.lights.PointLight;
@@ -34,30 +37,41 @@ import rajawali.math.Quaternion;
 import android.os.Handler;
 import android.os.Message;
 import java.io.File;
+import android.media.SoundPool;
+import android.media.AudioManager;
+import android.media.SoundPool.OnLoadCompleteListener;
+import java.nio.FloatBuffer;
 
 /** The renderer class for the ImageTargets sample. */
-public class ObjectsRenderer extends RajawaliRenderer implements
-		OnPreparedListener, OnBufferingUpdateListener, OnCompletionListener,
-		OnErrorListener
+public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteListener, OnPreparedListener, OnBufferingUpdateListener, OnCompletionListener, OnErrorListener
 {
 	private Handler					mLoad;
 	public boolean					izLoaded		= true;
 	public boolean					doLoad			= true;
 	public boolean					doReset			= false;
+	private boolean					actions_enabled	= true;
 	public int						curProj			= 0;
+	private int						audioid			= 0;
 	private MediaPlayer				mMediaPlayer;
-	private SurfaceTexture			mTexture;
+	private SoundPool				mAudioPlayer;
+	private SurfaceTexture			mVideoTexture;
 	private String					dirn;
+	private BaseObject3D			tmp_obj;
 	private ArrayList<String>		textureNames;
 	private ArrayList<TextureInfo>	textureInfos;
-	private float FOV;
+	private ArrayList<String>		modelNames;
+	private ArrayList<BaseObject3D>	models;
+	private ArrayList<ObjectAction>	actions;
+	private float					FOV;
 	private boolean					isTracking		= false;
 	private long					lastTrackTime	= 0;
 	private ObjParser				mParser;
 	private TextureManager			mTextureManager;
 	private TextureManager			mVideoTextureM;
 	private ArrayList<ProjectLevel>	ps;
-
+	private VideoMaterial			vmaterial;
+	private float[]					temp_texture_coords;
+	private TextureInfo				vt;
 	private float[]					mm1				= new float[16];
 	private float[]					mm2				= new float[16];
 	private float[]					mm3				= new float[16];
@@ -65,9 +79,11 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	private float[]					mm				= new float[16];
 	protected float[]				mInvMatrix		= new float[16];
 	protected float[]				mCamMatrix		= new float[16];
+	private float[]					videoMatrix		= new float[16];
 	protected Quaternion			q				= new Quaternion();
-
+	private TextureInfo				temp_ti;
 	public Number3D					camPos			= new Number3D(0f, 1.4f, 0f);
+	public Number3D					stepPos			= new Number3D(0f, 1.4f, 0f);
 
 	public float					phi				= 0f;
 	public float					theta			= 90f;
@@ -76,11 +92,16 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	public ObjectsRenderer(Context context, String d, float fov)
 	{
 		super(context);
-		FOV=fov;
+		FOV = fov;
 		ctx = context;
 		dirn = d;
+		mAudioPlayer = new SoundPool(5, AudioManager.STREAM_MUSIC, 0);
+		mAudioPlayer.setOnLoadCompleteListener(this);
 		textureNames = new ArrayList<String>();
 		textureInfos = new ArrayList<TextureInfo>();
+		modelNames = new ArrayList<String>();
+		models = new ArrayList<BaseObject3D>();
+		actions = new ArrayList<ObjectAction>();
 		RajLog.enableDebug(false);
 		/* setup markers position */
 		MarkerPlane c = new MarkerPlane(1, 1, 1, 1);
@@ -110,12 +131,13 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		c.setRotY(180);
 		mm3 = c.getModelViewMatrix();
 		c = null;
-		// System.gc();
 	}
 
 	protected void initScene()
 	{
 		mVideoTextureM = new TextureManager();
+		setupVideoTexture();
+
 		mTextureManager = new TextureManager();
 		mCamera.setFarPlane(50f);
 		mCamera.setNearPlane(0.1f);
@@ -123,30 +145,37 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		/* camera init */
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
-		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
-				(camPos.z + la.z)));
+		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
 		mCamera.setFieldOfView(FOV);
-		lastTrackTime = System.nanoTime()/1000000000;
+		lastTrackTime = System.nanoTime() / 1000000000;
 		System.gc();
 	}
 
 	public void clearScene()
 	{
+		if (audioid != 0)
+		{
+			mAudioPlayer.stop(audioid);
+			mAudioPlayer.unload(audioid);
+		}
+		stopVideo();
 		clearChildren();
-		super.mNumChildren = 0;
 		mTextureManager.reset();
 		textureNames.clear();
 		textureInfos.clear();
+		modelNames.clear();
+		models.clear();
+		actions.clear();
 		System.gc();
 	}
 
 	public void setPosition(String n, float[] CM)
 	{
 		isTracking = true;
-		float c_phi=0f;
-		float c_theta=0f;
-		Number3D c_camPos=new Number3D();
-		long curTime=System.nanoTime()/1000000000;
+		float c_phi = 0f;
+		float c_theta = 0f;
+		Number3D c_camPos = new Number3D();
+		long curTime = System.nanoTime() / 1000000000;
 		if (n.contentEquals("marker1"))
 		{
 			mm = mm1;
@@ -195,21 +224,23 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 			c_camPos.x = mCamMatrix[14];
 			c_camPos.z = mCamMatrix[12];
 		}
-		float dt=(float) (curTime-lastTrackTime);
-		
+		float dt = (float) (curTime - lastTrackTime);
+
 		lastTrackTime = curTime;
-		c_theta=c_theta+90f;
-		c_phi=c_phi%360;
-		c_theta=c_theta%360;
-		phi+=(c_phi-phi)/4;
-		theta+=(c_theta-theta)/4;
-		camPos.x+=(c_camPos.x-camPos.x)/4;
-		camPos.z+=(c_camPos.z-camPos.z)/4;
-		//smoothedValue += timeSinceLastUpdate * (newValue - smoothedValue) / smoothing
-		//theta = theta + 90f;
-		Number3D la = SphericalToCartesian(phi, theta, 1);
-		mCamera.setPosition(camPos);
-		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
+		c_theta = c_theta + 90f;
+		c_phi = c_phi % 360;
+		c_theta = c_theta % 360;
+		// phi += (c_phi - phi) / 4;
+		// theta += (c_theta - theta) / 4;
+		camPos.x += (c_camPos.x - camPos.x) / 4;
+		camPos.z += (c_camPos.z - camPos.z) / 4;
+		// smoothedValue += timeSinceLastUpdate * (newValue - smoothedValue) /
+		// smoothing
+		// theta = theta + 90f;
+		// Number3D la = SphericalToCartesian(phi, theta, 1);
+		// mCamera.setPosition(camPos);
+		// mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
+		// (camPos.z + la.z)));
 	}
 
 	public Number3D SphericalToCartesian(float phi, float theta, float r)
@@ -247,14 +278,12 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config)
 	{
-		Log.d("created surface", "created");
 		super.onSurfaceCreated(gl, config);
 	}
 
 	@Override
 	public void onDrawFrame(GL10 glUnused)
 	{
-		// mTexture.updateTexImage();
 		if (doReset == true)
 		{
 			resetScene();
@@ -263,7 +292,6 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		}
 		if (izLoaded == false)
 		{
-			Log.d("render", "load scene");
 			clearScene();
 			Message m = new Message();
 			((ImageTargets) ctx).mLoadingHandler.sendMessage(m);
@@ -271,14 +299,44 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 			izLoaded = true;
 			System.gc();
 		}
-		super.onDrawFrame(glUnused);
+		countCamPos();
+		if (actions_enabled == true)
+		{
+			for (int i = 0; i < actions.size(); i++)
+			{
+				actions.get(i).checkAction(mCamera.getPosition(), this);
+			}
+		}
+		if (mMediaPlayer.isPlaying() == true)
+		{
+			mVideoTexture.updateTexImage();
+			mVideoTexture.getTransformMatrix(videoMatrix);
+			int l = temp_texture_coords.length;
+			float[] textureCoords = new float[l];
+			float transformedU;
+			float transformedV;
+			for (int i = 0; i < l; i = i + 2)
+			{
+				float x = videoMatrix[0] * temp_texture_coords[i] + videoMatrix[4] * temp_texture_coords[i + 1] + videoMatrix[12] * 1.f;
+				float y = videoMatrix[1] * temp_texture_coords[i] + videoMatrix[5] * temp_texture_coords[i + 1] + videoMatrix[13] * 1.f;
+				textureCoords[i] = x;
+				textureCoords[i + 1] = y;
+			}
+			tmp_obj.getGeometry().setTextureCoords(textureCoords);// set
+																	// transformed
+																	// texture
+																	// coords
+			Log.d("----------", "----------");
+			for (int i = 0; i < textureCoords.length; i++)
+			{
+				Log.d("original texture", "coord: " + temp_texture_coords[i]);
+				Log.d("transformed texture", "coord: " + textureCoords[i]);
+			}
 
-		// iterate thru objects for interactivity
-		/*
-		 * if(doLoad==true) {
-		 * 
-		 * }
-		 */
+			Log.d("----------", "----------");
+			tmp_obj.getGeometry().changeBufferData(tmp_obj.getGeometry().getTexCoordBufferInfo(), tmp_obj.getGeometry().getTextureCoords(), 0);
+		}
+		super.onDrawFrame(glUnused);
 	}
 
 	public void resetRenderer()
@@ -306,24 +364,32 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 
 	public void LoadTextures(ProjectLevel p)
 	{
-		Log.d("textures size", "s: " + p.Textures.size());
 		for (int i = 0; i < p.Textures.size(); i++)
 		{
-			File f = new File(Environment.getExternalStorageDirectory() + "/"
-					+ dirn, p.Textures.get(i));
+			File f = new File(Environment.getExternalStorageDirectory() + "/" + dirn, p.Textures.get(i));
 			if (f.exists())
 			{
-				String ttn = Environment.getExternalStorageDirectory() + "/"
-						+ dirn + "/" + p.Textures.get(i);
+				String ttn = Environment.getExternalStorageDirectory() + "/" + dirn + "/" + p.Textures.get(i);
 				Bitmap mBM = BitmapFactory.decodeFile(ttn);
-				Log.d("textures", ttn);
+				textureNames.add(i, p.Textures.get(i));
 				textureInfos.add(i, mTextureManager.addTexture(mBM));
 			}
 			else
 			{
+				textureNames.add(i, null);
 				textureInfos.add(i, null);
 			}
 		}
+	}
+
+	public TextureInfo getTextureByName(String n)
+	{
+		int ti = textureNames.indexOf(n);
+		if (ti != -1)
+		{
+			return textureInfos.get(ti);
+		}
+		else return null;
 	}
 
 	public void LoadObjects(ProjectLevel p)
@@ -332,13 +398,14 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 		LoadTextures(p);
 		for (int i = 0; i < p.getModels().size(); i++)
 		{
-			String onn = dirn + "/" + p.getModels().get(i).getModel();
-			File f = new File(Environment.getExternalStorageDirectory() + "/"
-					+ dirn, p.getModels().get(i).getModel());
-			Log.d("file", "f: " + f.getAbsolutePath());
+			int objects = 0;
+			ProjectObject pr_obj = p.getModels().get(i);
+			String modelName = pr_obj.getModel();
+			String onn = dirn + "/" + modelName;
+			File f = new File(Environment.getExternalStorageDirectory() + "/" + dirn, modelName);
+
 			if (f.exists())// does the file really exists?
 			{
-				Log.d("model: ", onn);
 				mParser = new ObjParser(this, onn);
 				mParser.parse();
 				BaseObject3D obj = mParser.getParsedObject();
@@ -347,98 +414,116 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 				obj.setDepthTestEnabled(true);
 				obj.setBlendingEnabled(true);
 				obj.setBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-				if (p.getModels().get(i).isDoubleSided())
+				if (pr_obj.isDoubleSided())
 				{
 					obj.setDoubleSided(true);
 				}
-				int ti = p.Textures.indexOf(p.getModels().get(i).getTexture());
+				int ti = p.Textures.indexOf(pr_obj.getTexture());
 				if (textureInfos.get(ti) != null)
 				{
 					obj.addTexture(textureInfos.get(ti));
 				}
-				BoundingBox bb = obj.getGeometry().getBoundingBox();
-				Number3D mi = bb.getMin();
-				Number3D mx = bb.getMax();
-				Number3D cnt = new Number3D((mi.x + mx.x) / 2,
-						(mi.y + mx.y) / 2, (mi.z + mx.z) / 2);
+				if (pr_obj.isInteractive() == 1)
+				{
+					ObjectAction oa = p.getActionByName(pr_obj.getActionName());
+					if (oa != null)
+					{
+
+						ObjectAction obj_act = (ObjectAction) oa.clone();
+						obj_act.setModelName(modelName);
+						BoundingBox bb = obj.getGeometry().getBoundingBox();
+						Number3D mi = bb.getMin();
+						Number3D mx = bb.getMax();
+						Number3D cnt = new Number3D((mi.x + mx.x) / 2, (mi.y + mx.y) / 2, (mi.z + mx.z) / 2);
+						Log.d("center", "x: " + cnt.x + ", y:" + cnt.y + ", z:" + cnt.z);
+						obj_act.setCenter(cnt, mCamera.getPosition());
+						if (obj_act.getType().contentEquals("p"))
+						{
+							obj_act.setPlane(obj.getGeometry(), mCamera.getPosition());
+						}
+						Log.d("videotexture", pr_obj.getVideoTexture());
+						obj_act.setVideo(pr_obj.getVideoTexture());
+						actions.add(obj_act);
+					}
+				}
 				addChild(obj);
-				p.getModels().get(i).setCenter(cnt);
-				p.getModels().get(i).setObj(obj);
-				// if (p.getModels().get(i).isVideo())
-				// {
-				// Log.d("isvideo", "yeees");
-				// obj.setMaterial(vmaterial);
-				// obj.addTexture(vt);
-				// }
+				models.add(objects, obj);
+				modelNames.add(objects, modelName);
+				objects++;
 			}
 		}
 		System.gc();
 	}
+
 	public boolean checkTracking()
 	{
-		float ts=System.nanoTime()/1000000000;
-		float dt=ts-lastTrackTime;
-		if( (isTracking==true && dt>=1.0f) || isTracking==false)
+		float ts = System.nanoTime() / 1000000000;
+		float dt = ts - lastTrackTime;
+		if ((isTracking == true && dt >= 1.0f) || isTracking == false)
 		{
-			isTracking=false;
-		}	
+			isTracking = false;
+		}
 		return isTracking;
 	}
-	public void doGyroRot(float add)
+
+	public void countCamPos()
 	{
-		if(checkTracking()==false)
+		if (checkTracking() == false)// if not tracking smooth steps positions
 		{
-			Log.d("timediff","td: Not tracking doing sensors-gyro");
-			phi-=add;//add gyro rotation to current rotation
-			Number3D la = SphericalToCartesian(phi, theta, 1);
-			mCamera.setPosition(camPos);
-			mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),(camPos.z + la.z)));
+			camPos.x += (stepPos.x - camPos.x) / 5;
+			camPos.z += (stepPos.z - camPos.z) / 5;
 		}
-	}
-	public void doOrientationRot(float p)
-	{
-		if(checkTracking()==false)
-		{
-			Log.d("timediff","td: Not tracking doing sensors-orientation");
-			theta=p;
-			Number3D la = SphericalToCartesian(phi, theta, 1);
-			mCamera.setPosition(camPos);
-			mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),(camPos.z + la.z)));
-		}		
-	}
-	public void setDockingPos()
-	{
-		camPos.x=6.414f;
-		camPos.z=3.684f;
-		theta=90f;
-		phi=0f;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
-		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
-				(camPos.z + la.z)));
+		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
 	}
+
+	public void doGyroRot(float add)
+	{
+		phi -= add;// add gyro rotation to current rotation
+	}
+
+	public void doOrientationRot(float p)
+	{
+		theta = p;
+	}
+
+	public void setDockingPos()
+	{
+		camPos.x = 6.414f;
+		camPos.z = 3.684f;
+		theta = 90f;
+		phi = 0f;
+		Number3D la = SphericalToCartesian(phi, theta, 1);
+		mCamera.setPosition(camPos);
+		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
+	}
+
 	public void onStep(float sl)
 	{
-		if(checkTracking()==false)
+		if (checkTracking() == false)
 		{
-			Log.d("timediff","td: Not tracking doing sensors-step");
 			Number3D ap = CylindricalToCartesian(phi, sl, camPos.y);
-			camPos.x+=ap.x;
-			camPos.z+=ap.z;
-			Number3D la = SphericalToCartesian(phi, theta, 1);
-			mCamera.setPosition(camPos);
-			mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
-					(camPos.z + la.z)));
-		}		
+			stepPos.x += ap.x;
+			stepPos.z += ap.z;
+		}
 	}
-	
+
 	public void onBufferingUpdate(MediaPlayer arg0, int arg1)
 	{
 	}
 
+	public void onLoadComplete(SoundPool sP, int sampleId, int status)
+	{
+		if (status == 0)
+		{
+			mAudioPlayer.play(audioid, 1f, 1f, 1, 0, 0);
+		}
+	}
+
 	public void onPrepared(MediaPlayer mediaplayer)
 	{
-		// mMediaPlayer.start();
+		mMediaPlayer.start();
 	}
 
 	public void onCompletion(MediaPlayer arg0)
@@ -452,8 +537,16 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 
 	public void onSurfaceDestroyed()
 	{
-		// mMediaPlayer.release();
+		mMediaPlayer.stop();
+		mMediaPlayer.release();
 		super.onSurfaceDestroyed();
+	}
+
+	public BaseObject3D getModelByName(String n)
+	{
+		int oi = modelNames.indexOf(n);// get object index
+		if (oi != -1) return models.get(oi);
+		else return null;
 	}
 
 	public void showProject(int k)
@@ -464,16 +557,88 @@ public class ObjectsRenderer extends RajawaliRenderer implements
 			izLoaded = false;
 			doLoad = false;
 		}
-		/*
-		 * mMediaPlayer.stop(); hideModels(); ProjectLevel p = ps.get(k); for
-		 * (int i = 0; i < p.getModels().size(); i++) {
-		 * p.getModels().get(i).obj.setVisible(true); if
-		 * (p.getModels().get(i).isVideo()) { try {
-		 * 
-		 * mMediaPlayer.setDataSource(Environment .getExternalStorageDirectory()
-		 * + "/" + p.getModels().get(i).getTexture());
-		 * mMediaPlayer.prepareAsync(); Log.d("video", "loading"); } catch
-		 * (IOException e) { Log.d("video", "not loaded"); } } }
-		 */
+	}
+
+	public void setupVideoTexture()
+	{
+
+		vmaterial = new VideoMaterial();
+		vt = mVideoTextureM.addVideoTexture();
+		int textureid = vt.getTextureId();
+
+		mVideoTexture = new SurfaceTexture(textureid);
+		mMediaPlayer = new MediaPlayer();
+		mMediaPlayer.setOnPreparedListener(this);
+		mMediaPlayer.setOnBufferingUpdateListener(this);
+		mMediaPlayer.setOnCompletionListener(this);
+		mMediaPlayer.setOnErrorListener(this);
+		mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+		mMediaPlayer.setSurface(new Surface(mVideoTexture));
+		mMediaPlayer.setLooping(true);
+	}
+
+	public void stopAudio()
+	{
+		if (audioid != 0)
+		{
+			mAudioPlayer.stop(audioid);
+			mAudioPlayer.unload(audioid);
+		}
+	}
+
+	public void playAudio(String f)
+	{
+		stopAudio();
+		audioid = mAudioPlayer.load(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f, 1);
+
+	}
+
+	public void startVideo(BaseObject3D obj, String f)
+	{
+		stopVideo();
+		/* store object texture coordinates */
+		FloatBuffer tc = obj.getGeometry().getTextureCoords();
+		tc.rewind();
+		temp_texture_coords = new float[tc.capacity()];
+		for (int i = 0; i < tc.capacity(); i++)
+		{
+			temp_texture_coords[i] = tc.get(i);
+		}
+		temp_ti = obj.getTextureInfoList().get(0);
+		tmp_obj = obj;
+		tmp_obj.setMaterial(vmaterial);// set video material
+		tmp_obj.addTexture(vt);// set video texture
+		try
+		{
+			mMediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f);
+			mMediaPlayer.prepareAsync();
+		}
+		catch (Exception e)
+		{
+
+		}
+	}
+
+	public void stopVideo()
+	{
+		Log.d("video", "stop");
+		if (mMediaPlayer.isPlaying())
+		{
+			mMediaPlayer.stop();
+			mMediaPlayer.seekTo(0);
+		}
+		if (tmp_obj != null)
+		{
+			tmp_obj.getGeometry().setTextureCoords(temp_texture_coords);
+			tmp_obj.getGeometry().changeBufferData(tmp_obj.getGeometry().getTexCoordBufferInfo(), tmp_obj.getGeometry().getTextureCoords(), 0);
+			tmp_obj.setMaterial(new SimpleMaterial());// set basic material
+			tmp_obj.addTexture(temp_ti);// set default texture
+		}
+
+	}
+
+	public void setActions(boolean a)
+	{
+		actions_enabled = a;
 	}
 }

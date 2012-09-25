@@ -1,8 +1,38 @@
 <!--?xml version="1.0" encoding="UTF-8"?-->
 <venice version="0.1" startx="0" starty="0" startz="0" htmlfile="html/tutorial.html">
 	<project name="New Giardini - 13m3 + Jan Triaska" description="Triaska" htmlfile="html/newgiardini.html">
+	    
+	    <!-- 
+	    <action name="changeTexture" type="s" radius="0.5">
+        <onenter>
+            <showmodels>
+                <models>modelname</models>
+            </showmodels>
+            <hidemodels>
+                <models>modelname</models>
+            </hidemodels>
+            <changetexture>
+                <texture>texturename</texture>
+            </changetexture>
+            <stopvideo></stopvideo>
+            <playaudio>
+                <file>audiofile</file>
+            </playaudio>
+        </onenter>
+        <onleave>
+            <startvideo></startvideo>
+            <stopaudio></stopaudio>
+        </onleave>
+        <oncross></oncross>
+        <axes>
+            <axe>x</axe>
+            <axe>y</axe>
+        </axes>
+    </action>
+    -->
+    
+	    
 		<action name="changeTexture" type="s" radius="0.5">
-	        <!-- used when type s, r -->
 	        <onenter>
 	            <changetexture>
 	                <texture>NG01.png</texture>
