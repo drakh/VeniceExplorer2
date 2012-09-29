@@ -5,6 +5,7 @@ import java.util.ArrayList;
 public class ProjectLevel
 {
 	public String					projectName;
+	public String					loadingText	= "";
 	public ArrayList<ProjectObject>	objs;
 	public ArrayList<String>		Textures;
 	public ArrayList<String>		ActionNames;
@@ -20,7 +21,6 @@ public class ProjectLevel
 		ActionNames = new ArrayList<String>();
 		Actions = new ArrayList<ObjectAction>();
 	}
-
 	public void addAction(String n, ObjectAction a)
 	{
 		ActionNames.add(ac, n);

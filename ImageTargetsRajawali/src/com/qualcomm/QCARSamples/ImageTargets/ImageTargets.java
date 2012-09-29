@@ -1,5 +1,12 @@
 package com.qualcomm.QCARSamples.ImageTargets;
 
+import android.widget.VideoView;
+import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnBufferingUpdateListener;
+import android.media.MediaPlayer.OnCompletionListener;
+import android.media.MediaPlayer.OnErrorListener;
+import android.media.MediaPlayer.OnPreparedListener;
+
 import java.util.Date;
 import java.text.SimpleDateFormat;
 import android.view.ViewGroup;
@@ -30,6 +37,7 @@ import android.os.Message;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
@@ -61,7 +69,12 @@ import android.media.*;
 public class ImageTargets extends Activity implements SensorEventListener
 {
 	/* step detector */
-	private String					loadingText						= "Loading, please wait";
+	private MediaPlayer				mMediaPlayer;
+	private TextView				mVideoInfoTxt;
+	private String					VideoInfoTxt					= "";
+	public boolean					playing_video					= false;
+	public VideoView				mVideoView;
+	private String					loadingText						= "Loading, please wait...";
 	private boolean					detecting						= false;
 	private static int				mLimit							= 10;
 	private static float			mLastValues[]					= new float[3 * 2];
@@ -83,6 +96,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private FrameLayout				mGUI;
 	private FrameLayout				mRecord;
 	private TextView				mProjView;
+	private TextView				mLoadingView;
 	private LinearLayout			mLL;
 	private SensorManager			mSensorManager					= null;
 	private TextView				mMenuBtn;
@@ -319,6 +333,8 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 		/* menu */
 		scrollContainer = new ScrollView(this);
+		scrollContainer.setScrollbarFadingEnabled(false);
+		// scrollContainer.setScrollBarStyle(style)
 		scrollContainer.setLayoutParams(new ViewGroup.LayoutParams(300, mScreenHeight - 160));
 		scrollContainer.setY(90f);
 		mLL = new LinearLayout(this);
@@ -332,7 +348,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 		/* info text */
 		InfoText = new WebView(this);
-		InfoText.setLayoutParams(new ViewGroup.LayoutParams(mScreenWidth - 600, mScreenHeight - 160));
+		InfoText.setLayoutParams(new ViewGroup.LayoutParams(mScreenWidth - 320, mScreenHeight - 160));
 		InfoText.setY(90f);
 		InfoText.setX(300f);
 		InfoText.setBackgroundColor(Color.WHITE);
@@ -400,11 +416,29 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mProjView.setPadding(10, 10, 0, 10);
 		mGUI.addView(mProjView);
 
+		mLoadingView = new TextView(this);
+		mLoadingView.setTextSize(50);
+		mLoadingView.bringToFront();
+		mLoadingView.setGravity(Gravity.CENTER);
+		mLoadingView.setHeight(mScreenHeight);
+		mLoadingView.setShadowLayer(2f, 2f, 2f, Color.BLACK);
+		mGUI.addView(mLoadingView);
+
 		mRecord = new FrameLayout(this);
 		mRecord.setBackgroundColor(Color.LTGRAY);
 		mRecord.setLayoutParams(new ViewGroup.LayoutParams(650, 355));
 		mRecord.setX(mScreenWidth - 670);
 		mRecord.setY(86);
+
+		mVideoInfoTxt = new TextView(this);
+		mVideoInfoTxt.setLayoutParams(new ViewGroup.LayoutParams(150, 300));
+		mVideoInfoTxt.setPadding(5, 5, 5, 5);
+		mVideoInfoTxt.setTextSize(20);
+		mVideoInfoTxt.setTextColor(Color.BLACK);
+		mVideoInfoTxt.setX(450);
+		mVideoInfoTxt.setY(5);
+		mVideoInfoTxt.setText(VideoInfoTxt);
+		mRecord.addView(mVideoInfoTxt);
 
 		mRecordBtn = new TextView(this);
 		mRecordBtn.setTextSize(20);
@@ -426,6 +460,15 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mRecord.setVisibility(View.GONE);
 
 		mGUI.addView(mRecord);
+
+		// view to show videos
+		mVideoView = new VideoView(this);
+		mVideoView.setLayoutParams(new ViewGroup.LayoutParams(640, 480));
+		mVideoView.setX(20);
+		mVideoView.setY(mScreenHeight - 660);
+		mVideoView.setVisibility(View.GONE);
+		mVideoView.setBackgroundColor(Color.BLACK);
+		mGUI.addView(mVideoView);
 
 		/* splash screen */
 		mSplashScreenImageResource = R.drawable.splash_screen_image_targets;
@@ -530,7 +573,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	{
 		DebugLog.LOGD("ImageTargets::onPause");
 		super.onPause();
-
+		stopVideo();
 		if (mGlView != null)
 		{
 			mGlView.setVisibility(View.INVISIBLE);
@@ -719,7 +762,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 	public void showLoading()
 	{
 		checkLoad = true;
-		mProjView.setText(loadingText);
+		int cp = mRenderer2.curProj;
+		mProjView.setText("");
+		mLoadingView.setText(vProjects.get(cp).loadingText);
+
 	}
 
 	public void hideLoading()
@@ -728,6 +774,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		{
 			int cp = mRenderer2.curProj;
 			mProjView.setText(vProjects.get(cp).getName());
+			mLoadingView.setText("");
 			checkLoad = false;
 		}
 	}
@@ -774,8 +821,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void hideGUI()
 	{
+		stopVideo();
 		HidePreview();
 		mProjView.setText("");
+		mLoadingView.setText("");
 		mGUI.setVisibility(View.GONE);
 		mRenderer2.resetRenderer();
 	}
@@ -808,6 +857,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mGlView2.setZOrderMediaOverlay(true);
 		mRenderer2 = new ObjectsRenderer(this, dirname, FOV);
 		mRenderer2.setObjs(vProjects);
+		// mRenderer2.setVideoSurface(mVideoView);
 		mGlView2.setRenderer(mRenderer2);
 	}
 
@@ -912,7 +962,14 @@ public class ImageTargets extends Activity implements SensorEventListener
 			{
 				tutorial = root.getAttribute("htmlfile");
 			}
-
+			if (root.hasAttribute("step"))
+			{
+				step_len = Float.parseFloat(root.getAttribute("step"));
+			}
+			if (root.hasAttribute("videoinfo"))
+			{
+				VideoInfoTxt = root.getAttribute("videoinfo");
+			}
 			NodeList projects = root.getElementsByTagName("project");
 			for (int i = 0; i < projects.getLength(); i++)
 			{
@@ -924,7 +981,14 @@ public class ImageTargets extends Activity implements SensorEventListener
 				{
 					pl.setHtml(project.getAttribute("htmlfile"));
 				}
-
+				if (project.hasAttribute("loading"))
+				{
+					pl.loadingText = project.getAttribute("loading");
+				}
+				else
+				{
+					pl.loadingText = loadingText;
+				}
 				NodeList textures = project.getElementsByTagName("texture");
 				for (int j = 0; j < textures.getLength(); j++)
 				{
@@ -1139,6 +1203,20 @@ public class ImageTargets extends Activity implements SensorEventListener
 	public void onSensorChanged(SensorEvent event)
 	{
 		hideLoading();
+		if (mRenderer2 != null)
+		{
+
+			if (mRenderer2.isplayvideo == true && playing_video == false)
+			{
+				startVideo();
+			}
+
+			if (mRenderer2.isplayvideo == false && playing_video == true)
+			{
+				stopVideo();
+			}
+
+		}
 		switch (event.sensor.getType())
 		{
 
@@ -1254,11 +1332,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 		for (int i = 0; i < vProjects.size(); i++)
 		{
 			TextView chsP = new TextView(this);
-			chsP.setTextSize(18);
+			chsP.setTextSize(24);
 			chsP.setGravity(Gravity.LEFT);
-			chsP.setHeight(72);
 			chsP.setShadowLayer(2f, 2f, 2f, Color.BLACK);
-			chsP.setPadding(10, 10, 0, 10);
+			chsP.setPadding(10, 10, 10, 10);
 			chsP.setText(vProjects.get(i).getName());
 			chsP.setClickable(true);
 			MyMenuClickListener myh = new MyMenuClickListener(i);
@@ -1283,6 +1360,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void ShowMenu()
 	{
+		stopVideo();
 		scrollContainer.setVisibility(View.VISIBLE);
 		mMenuBtn.setBackgroundResource(R.drawable.info_b);
 		HideTutorial();
@@ -1312,9 +1390,11 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void ShowTutorial(String uri)
 	{
+		stopVideo();
 		InfoText.loadUrl(uri);
 		InfoText.setVisibility(View.VISIBLE);
 		mInfoBtn.setBackgroundResource(R.drawable.info_b);
+		mInfoBtn.setText("Close info");
 		InfoVisible = true;
 	}
 
@@ -1322,6 +1402,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	{
 		InfoText.setVisibility(View.GONE);
 		mInfoBtn.setBackgroundResource(R.drawable.back_b);
+		mInfoBtn.setText("Info");
 		InfoVisible = false;
 	}
 
@@ -1477,7 +1558,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 			mRenderer2.stopVideo();
 			mRenderer2.setActions(false);
 		}
-		
+
 		if (PreviewRunning == false)
 		{
 			HideMenu();
@@ -1508,22 +1589,24 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void HidePreview()
 	{
-		StopRecord();
-		mMenuBtn.setVisibility(View.VISIBLE);
-		mInfoBtn.setVisibility(View.VISIBLE);
-		if (PreviewRunning == true)
+		if (mCameraView != null)
 		{
-			mCameraView.stopPreview();
-			startCamera();
-			PreviewRunning = false;
-			System.gc();
+			StopRecord();
+			mMenuBtn.setVisibility(View.VISIBLE);
+			mInfoBtn.setVisibility(View.VISIBLE);
+			if (PreviewRunning == true)
+			{
+				mCameraView.stopPreview();
+				startCamera();
+				PreviewRunning = false;
+				System.gc();
+			}
+			mCameraView.setZOrderOnTop(false);
+			mCameraView.setVisibility(View.GONE);
+			mRecord.setVisibility(View.GONE);
+			mCommentsBtn.setText("Add coment");
+			mRenderer2.setActions(true);
 		}
-		mCameraView.setZOrderOnTop(false);
-		mCameraView.setVisibility(View.GONE);
-		mRecord.setVisibility(View.GONE);
-		mCommentsBtn.setText("Add coment");
-		mRenderer2.setActions(true);
-
 	}
 
 	public void StartStopPreview()
@@ -1556,5 +1639,29 @@ public class ImageTargets extends Activity implements SensorEventListener
 		{
 			return w;
 		}
+	}
+
+	public void startVideo()
+	{
+		mVideoView.setVisibility(View.VISIBLE);
+		mVideoView.setZOrderOnTop(true);
+		mVideoView.setVideoPath(Environment.getExternalStorageDirectory() + "/" + dirname + "/" + mRenderer2.videofile);
+		playing_video = true;
+		mVideoView.start();
+	}
+
+	public void stopVideo()
+	{
+		if (mVideoView.isPlaying())
+		{
+			mVideoView.stopPlayback();
+		}
+		if (mRenderer2 != null)
+		{
+			mRenderer2.isplayvideo = false;
+		}
+		mVideoView.setZOrderOnTop(false);
+		mVideoView.setVisibility(View.GONE);
+		playing_video = false;
 	}
 }

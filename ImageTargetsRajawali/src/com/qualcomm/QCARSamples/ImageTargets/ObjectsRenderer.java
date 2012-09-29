@@ -41,10 +41,13 @@ import android.media.SoundPool;
 import android.media.AudioManager;
 import android.media.SoundPool.OnLoadCompleteListener;
 import java.nio.FloatBuffer;
+import android.view.SurfaceView;
 
 /** The renderer class for the ImageTargets sample. */
 public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteListener, OnPreparedListener, OnBufferingUpdateListener, OnCompletionListener, OnErrorListener
 {
+	public String					videofile		= "";
+	public boolean					isplayvideo		= false;
 	private Handler					mLoad;
 	public boolean					izLoaded		= true;
 	public boolean					doLoad			= true;
@@ -84,6 +87,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 	private TextureInfo				temp_ti;
 	public Number3D					camPos			= new Number3D(0f, 1.4f, 0f);
 	public Number3D					stepPos			= new Number3D(0f, 1.4f, 0f);
+	public Number3D					markPos			= new Number3D(0f, 1.4f, 0f);
 
 	public float					phi				= 0f;
 	public float					theta			= 90f;
@@ -135,8 +139,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 
 	protected void initScene()
 	{
-		mVideoTextureM = new TextureManager();
-		setupVideoTexture();
+		// mVideoTextureM = new TextureManager();
 
 		mTextureManager = new TextureManager();
 		mCamera.setFarPlane(50f);
@@ -230,10 +233,15 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 		c_theta = c_theta + 90f;
 		c_phi = c_phi % 360;
 		c_theta = c_theta % 360;
-		// phi += (c_phi - phi) / 4;
+		phi += (c_phi - phi) / 4;
+
 		// theta += (c_theta - theta) / 4;
-		camPos.x += (c_camPos.x - camPos.x) / 4;
-		camPos.z += (c_camPos.z - camPos.z) / 4;
+		// theta=c_theta;
+		// phi=c_phi;
+		markPos.x = c_camPos.x;
+		markPos.z = c_camPos.z;
+		stepPos.x = c_camPos.x;
+		stepPos.z = c_camPos.z;
 		// smoothedValue += timeSinceLastUpdate * (newValue - smoothedValue) /
 		// smoothing
 		// theta = theta + 90f;
@@ -307,35 +315,27 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 				actions.get(i).checkAction(mCamera.getPosition(), this);
 			}
 		}
-		if (mMediaPlayer.isPlaying() == true)
-		{
-			mVideoTexture.updateTexImage();
-			mVideoTexture.getTransformMatrix(videoMatrix);
-			int l = temp_texture_coords.length;
-			float[] textureCoords = new float[l];
-			float transformedU;
-			float transformedV;
-			for (int i = 0; i < l; i = i + 2)
-			{
-				float x = videoMatrix[0] * temp_texture_coords[i] + videoMatrix[4] * temp_texture_coords[i + 1] + videoMatrix[12] * 1.f;
-				float y = videoMatrix[1] * temp_texture_coords[i] + videoMatrix[5] * temp_texture_coords[i + 1] + videoMatrix[13] * 1.f;
-				textureCoords[i] = x;
-				textureCoords[i + 1] = y;
-			}
-			tmp_obj.getGeometry().setTextureCoords(textureCoords);// set
-																	// transformed
-																	// texture
-																	// coords
-			Log.d("----------", "----------");
-			for (int i = 0; i < textureCoords.length; i++)
-			{
-				Log.d("original texture", "coord: " + temp_texture_coords[i]);
-				Log.d("transformed texture", "coord: " + textureCoords[i]);
-			}
-
-			Log.d("----------", "----------");
-			tmp_obj.getGeometry().changeBufferData(tmp_obj.getGeometry().getTexCoordBufferInfo(), tmp_obj.getGeometry().getTextureCoords(), 0);
-		}
+		/*
+		 * if (mMediaPlayer.isPlaying() == true) {
+		 * mVideoTexture.updateTexImage();
+		 * mVideoTexture.getTransformMatrix(videoMatrix); int l =
+		 * temp_texture_coords.length; float[] textureCoords = new float[l]; for
+		 * (int i = 0; i < l; i = i + 2) { float x = videoMatrix[0] *
+		 * temp_texture_coords[i] + videoMatrix[4] * temp_texture_coords[i + 1]
+		 * + videoMatrix[12] * 1.f; float y = videoMatrix[1] *
+		 * temp_texture_coords[i] + videoMatrix[5] * temp_texture_coords[i + 1]
+		 * + videoMatrix[13] * 1.f; textureCoords[i] = x; textureCoords[i + 1] =
+		 * y; } tmp_obj.getGeometry().setTextureCoords(textureCoords);// set //
+		 * transformed // texture // coords Log.d("----------", "----------");
+		 * for (int i = 0; i < textureCoords.length; i++) {
+		 * Log.d("original texture", "coord: " + temp_texture_coords[i]);
+		 * Log.d("transformed texture", "coord: " + textureCoords[i]); }
+		 * 
+		 * Log.d("----------", "----------");
+		 * tmp_obj.getGeometry().changeBufferData
+		 * (tmp_obj.getGeometry().getTexCoordBufferInfo(),
+		 * tmp_obj.getGeometry().getTextureCoords(), 0); }
+		 */
 		super.onDrawFrame(glUnused);
 	}
 
@@ -434,7 +434,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 						BoundingBox bb = obj.getGeometry().getBoundingBox();
 						Number3D mi = bb.getMin();
 						Number3D mx = bb.getMax();
-						Number3D cnt = new Number3D((mi.x + mx.x) / 2, (mi.y + mx.y) / 2, (mi.z + mx.z) / 2);
+						Number3D cnt = new Number3D(mi.x + ((mx.x - mi.x) / 2), mi.y + ((mx.y - mi.y) / 2), mi.z + ((mx.z - mi.z) / 2));
 						Log.d("center", "x: " + cnt.x + ", y:" + cnt.y + ", z:" + cnt.z);
 						obj_act.setCenter(cnt, mCamera.getPosition());
 						if (obj_act.getType().contentEquals("p"))
@@ -459,6 +459,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 	{
 		float ts = System.nanoTime() / 1000000000;
 		float dt = ts - lastTrackTime;
+		Log.d("testworking", "timeout: " + dt);
 		if ((isTracking == true && dt >= 1.0f) || isTracking == false)
 		{
 			isTracking = false;
@@ -473,6 +474,11 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 			camPos.x += (stepPos.x - camPos.x) / 5;
 			camPos.z += (stepPos.z - camPos.z) / 5;
 		}
+		else
+		{
+			camPos.x += (markPos.x - camPos.x) / 5;
+			camPos.z += (markPos.z - camPos.z) / 5;
+		}
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
@@ -480,7 +486,10 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 
 	public void doGyroRot(float add)
 	{
-		phi -= add;// add gyro rotation to current rotation
+		if (checkTracking() == false)
+		{
+			phi -= add;// add gyro rotation to current rotation
+		}
 	}
 
 	public void doOrientationRot(float p)
@@ -562,18 +571,20 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 	public void setupVideoTexture()
 	{
 
-		vmaterial = new VideoMaterial();
-		vt = mVideoTextureM.addVideoTexture();
-		int textureid = vt.getTextureId();
+		// vmaterial = new VideoMaterial();
+		// vt = mVideoTextureM.addVideoTexture();
+		// int textureid = vt.getTextureId();
 
-		mVideoTexture = new SurfaceTexture(textureid);
+		// mVideoTexture = new SurfaceTexture(textureid);
+
 		mMediaPlayer = new MediaPlayer();
 		mMediaPlayer.setOnPreparedListener(this);
 		mMediaPlayer.setOnBufferingUpdateListener(this);
 		mMediaPlayer.setOnCompletionListener(this);
 		mMediaPlayer.setOnErrorListener(this);
 		mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-		mMediaPlayer.setSurface(new Surface(mVideoTexture));
+		// mMediaPlayer.setSurface(new Surface(mVideoTexture));
+		// mMediaPlayer.setDisplay(videoPlayer.getHolder());
 		mMediaPlayer.setLooping(true);
 	}
 
@@ -595,50 +606,60 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 
 	public void startVideo(BaseObject3D obj, String f)
 	{
-		stopVideo();
-		/* store object texture coordinates */
-		FloatBuffer tc = obj.getGeometry().getTextureCoords();
-		tc.rewind();
-		temp_texture_coords = new float[tc.capacity()];
-		for (int i = 0; i < tc.capacity(); i++)
-		{
-			temp_texture_coords[i] = tc.get(i);
-		}
-		temp_ti = obj.getTextureInfoList().get(0);
-		tmp_obj = obj;
-		tmp_obj.setMaterial(vmaterial);// set video material
-		tmp_obj.addTexture(vt);// set video texture
-		try
-		{
-			mMediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f);
-			mMediaPlayer.prepareAsync();
-		}
-		catch (Exception e)
-		{
+		videofile = f;
+		isplayvideo = true;
 
-		}
+		// ((ImageTargets) ctx).startVideo(f);
+		// act.startVideo(f);
+		/*
+		 * stopVideo(); // store object texture coordinates FloatBuffer tc =
+		 * obj.getGeometry().getTextureCoords(); tc.rewind();
+		 * temp_texture_coords = new float[tc.capacity()]; for (int i = 0; i <
+		 * tc.capacity(); i++) { temp_texture_coords[i] = tc.get(i); } temp_ti =
+		 * obj.getTextureInfoList().get(0); tmp_obj = obj;
+		 * tmp_obj.setMaterial(vmaterial);// set video material
+		 * tmp_obj.addTexture(vt);// set video texture try {
+		 * mMediaPlayer.setDataSource(Environment.getExternalStorageDirectory()
+		 * + "/" + dirn + "/" + f); mMediaPlayer.prepareAsync(); } catch
+		 * (Exception e) {
+		 * 
+		 * }
+		 */
 	}
 
 	public void stopVideo()
 	{
-		Log.d("video", "stop");
-		if (mMediaPlayer.isPlaying())
-		{
-			mMediaPlayer.stop();
-			mMediaPlayer.seekTo(0);
-		}
-		if (tmp_obj != null)
-		{
-			tmp_obj.getGeometry().setTextureCoords(temp_texture_coords);
-			tmp_obj.getGeometry().changeBufferData(tmp_obj.getGeometry().getTexCoordBufferInfo(), tmp_obj.getGeometry().getTextureCoords(), 0);
-			tmp_obj.setMaterial(new SimpleMaterial());// set basic material
-			tmp_obj.addTexture(temp_ti);// set default texture
-		}
+		videofile = "";
+		isplayvideo = false;
+		/*
+		 * Log.d("video", "stop"); if (mMediaPlayer.isPlaying()) {
+		 * mMediaPlayer.stop(); mMediaPlayer.seekTo(0); } if (tmp_obj != null) {
+		 * tmp_obj.getGeometry().setTextureCoords(temp_texture_coords);
+		 * tmp_obj.getGeometry
+		 * ().changeBufferData(tmp_obj.getGeometry().getTexCoordBufferInfo(),
+		 * tmp_obj.getGeometry().getTextureCoords(), 0); tmp_obj.setMaterial(new
+		 * SimpleMaterial());// set basic material
+		 * tmp_obj.addTexture(temp_ti);// set default texture }
+		 */
 
 	}
 
 	public void setActions(boolean a)
 	{
 		actions_enabled = a;
+	}
+
+	public void setVideoSurface(SurfaceView v)
+	{
+		/*
+		 * videoPlayer=v; videoPlayer.setZOrderOnTop(false);
+		 * videoPlayer.setVisibility(View.GONE); mMediaPlayer = new
+		 * MediaPlayer(); mMediaPlayer.setOnPreparedListener(this);
+		 * mMediaPlayer.setOnBufferingUpdateListener(this);
+		 * mMediaPlayer.setOnCompletionListener(this);
+		 * mMediaPlayer.setOnErrorListener(this);
+		 * mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+		 */
+		// mMediaPlayer.setDisplay(videoPlayer.getHolder());
 	}
 }
