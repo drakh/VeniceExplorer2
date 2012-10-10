@@ -489,6 +489,8 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		{
 			camPos.x += (markPos.x - camPos.x) / 9;
 			camPos.z += (markPos.z - camPos.z) / 9;
+			stepPos.x=camPos.x;
+			stepPos.z=camPos.z;
 		}
 		// phi=(phi+360)%360;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
