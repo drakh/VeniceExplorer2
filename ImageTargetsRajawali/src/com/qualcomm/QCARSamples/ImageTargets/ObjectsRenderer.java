@@ -99,11 +99,12 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 
 		mMediaPlayer = new MediaPlayer();
 		mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+		mMediaPlayer.setLooping(false);
 		mMediaPlayer.setOnPreparedListener(this);
 		mMediaPlayer.setOnBufferingUpdateListener(this);
 		mMediaPlayer.setOnCompletionListener(this);
 		mMediaPlayer.setOnErrorListener(this);
-
+		
 		textureNames = new ArrayList<String>();
 		textureInfos = new ArrayList<TextureInfo>();
 		modelNames = new ArrayList<String>();
@@ -534,11 +535,13 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 
 	public void onPrepared(MediaPlayer mediaplayer)
 	{
-		//mMediaPlayer.start();
+		mediaplayer.start();
 	}
 
-	public void onCompletion(MediaPlayer arg0)
+	public void onCompletion(MediaPlayer mediaplayer)
 	{
+		mediaplayer.stop();
+		mediaplayer.reset();
 	}
 
 	public boolean onError(MediaPlayer mp, int what, int extra)
@@ -593,6 +596,8 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		if (mMediaPlayer.isPlaying())
 		{
 			mMediaPlayer.stop();
+			mMediaPlayer.reset();
+			
 		}
 		/*
 		 * if (audioid != 0) { mAudioPlayer.stop(audioid);
@@ -607,11 +612,13 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		// + "/" + dirn + "/" + f, 1);
 		try
 		{
-			mMediaPlayer.reset();
+			//mMediaPlayer.reset();
+			
 			mMediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f);
-			//mMediaPlayer.prepareAsync();
-			mMediaPlayer.prepare();
-			mMediaPlayer.start();
+			mMediaPlayer.prepareAsync();
+			//mMediaPlayer.prepare();
+			//mMediaPlayer.seekTo(0);
+			//mMediaPlayer.start();
 		}
 		catch (Exception e)
 		{
