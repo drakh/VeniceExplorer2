@@ -46,6 +46,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 	public String					videofile		= "";
 	public String					videotext		= "";
 	public boolean					isplayvideo		= false;
+	private static final float		NS2S			= 1.0f / 1000000000.0f;
 	private Handler					mLoad;
 	public boolean					izLoaded		= true;
 	public boolean					doLoad			= true;
@@ -64,7 +65,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 	private ArrayList<ObjectAction>	actions;
 	private float					FOV;
 	private boolean					isTracking		= false;
-	private long					lastTrackTime	= 0;
+	private float					lastTrackTime	= 0;
 	private ObjParser				mParser;
 	private TextureManager			mTextureManager;
 	private TextureManager			mVideoTextureM;
@@ -104,7 +105,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		mMediaPlayer.setOnBufferingUpdateListener(this);
 		mMediaPlayer.setOnCompletionListener(this);
 		mMediaPlayer.setOnErrorListener(this);
-		
+
 		textureNames = new ArrayList<String>();
 		textureInfos = new ArrayList<TextureInfo>();
 		modelNames = new ArrayList<String>();
@@ -154,7 +155,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
 		mCamera.setFieldOfView(FOV);
-		lastTrackTime = System.nanoTime() / 1000000000;
+		lastTrackTime = System.nanoTime() * NS2S;
 		System.gc();
 	}
 
@@ -181,7 +182,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		float c_phi = 0f;
 		float c_theta = 0f;
 		Number3D c_camPos = new Number3D();
-		long curTime = System.nanoTime() / 1000000000;
+		float curTime = System.nanoTime() * NS2S;
 		if (n.contentEquals("marker1"))
 		{
 			mm = mm1;
@@ -423,7 +424,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 				}
 				if (!pr_obj.isVisible())
 				{
-					Log.d("invisible","invisible");
+					Log.d("invisible", "invisible");
 					obj.setVisible(false);
 				}
 				int ti = p.Textures.indexOf(pr_obj.getTexture());
@@ -467,10 +468,10 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 
 	public boolean checkTracking()
 	{
-		float ts = System.nanoTime() / 1000000000;
-		float dt = ts - lastTrackTime;
-
-		if ((isTracking == true && dt > 1.0f) || isTracking == false)
+		float ts = System.nanoTime() * NS2S;
+		float dt = (ts - lastTrackTime);
+		Log.d("track diff", "diff: " + dt);
+		if ((isTracking == true && dt >= 0.5f) || isTracking == false)
 		{
 			isTracking = false;
 		}
@@ -489,7 +490,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 			camPos.x += (markPos.x - camPos.x) / 9;
 			camPos.z += (markPos.z - camPos.z) / 9;
 		}
-		//phi=(phi+360)%360;
+		// phi=(phi+360)%360;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
@@ -597,7 +598,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		{
 			mMediaPlayer.stop();
 			mMediaPlayer.reset();
-			
+
 		}
 		/*
 		 * if (audioid != 0) { mAudioPlayer.stop(audioid);
@@ -612,13 +613,13 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		// + "/" + dirn + "/" + f, 1);
 		try
 		{
-			//mMediaPlayer.reset();
-			
+			// mMediaPlayer.reset();
+
 			mMediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f);
 			mMediaPlayer.prepareAsync();
-			//mMediaPlayer.prepare();
-			//mMediaPlayer.seekTo(0);
-			//mMediaPlayer.start();
+			// mMediaPlayer.prepare();
+			// mMediaPlayer.seekTo(0);
+			// mMediaPlayer.start();
 		}
 		catch (Exception e)
 		{

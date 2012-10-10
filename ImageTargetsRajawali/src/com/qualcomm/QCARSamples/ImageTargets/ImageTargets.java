@@ -1287,7 +1287,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		float omegaMagnitude = (float) Math.sqrt(event.values[0] * event.values[0] + event.values[1] * event.values[1] + event.values[2] * event.values[2]);
 		float prevAcc = accVal;
 		accVal += (omegaMagnitude - accVal) / 2.5;
-		if (Math.abs(prevAcc - accVal) >= 0.015)
+		if (Math.abs(prevAcc - accVal) >= 0.005)
 		{
 			moving = true;
 		}
