@@ -37,16 +37,14 @@ import rajawali.math.Quaternion;
 import android.os.Handler;
 import android.os.Message;
 import java.io.File;
-import android.media.SoundPool;
-import android.media.AudioManager;
-import android.media.SoundPool.OnLoadCompleteListener;
 import java.nio.FloatBuffer;
 import android.view.SurfaceView;
 
 /** The renderer class for the ImageTargets sample. */
-public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteListener, OnPreparedListener, OnBufferingUpdateListener, OnCompletionListener, OnErrorListener
+public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListener, OnBufferingUpdateListener, OnCompletionListener, OnErrorListener
 {
 	public String					videofile		= "";
+	public String					videotext		= "";
 	public boolean					isplayvideo		= false;
 	private Handler					mLoad;
 	public boolean					izLoaded		= true;
@@ -56,7 +54,6 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 	public int						curProj			= 0;
 	private int						audioid			= 0;
 	private MediaPlayer				mMediaPlayer;
-	private SoundPool				mAudioPlayer;
 	private SurfaceTexture			mVideoTexture;
 	private String					dirn;
 	private BaseObject3D			tmp_obj;
@@ -99,8 +96,14 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 		FOV = fov;
 		ctx = context;
 		dirn = d;
-		mAudioPlayer = new SoundPool(5, AudioManager.STREAM_MUSIC, 0);
-		mAudioPlayer.setOnLoadCompleteListener(this);
+
+		mMediaPlayer = new MediaPlayer();
+		mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+		mMediaPlayer.setOnPreparedListener(this);
+		mMediaPlayer.setOnBufferingUpdateListener(this);
+		mMediaPlayer.setOnCompletionListener(this);
+		mMediaPlayer.setOnErrorListener(this);
+
 		textureNames = new ArrayList<String>();
 		textureInfos = new ArrayList<TextureInfo>();
 		modelNames = new ArrayList<String>();
@@ -156,10 +159,9 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 
 	public void clearScene()
 	{
-		if (audioid != 0)
+		if (mMediaPlayer.isPlaying())
 		{
-			mAudioPlayer.stop(audioid);
-			mAudioPlayer.unload(audioid);
+			mMediaPlayer.stop();
 		}
 		stopVideo();
 		clearChildren();
@@ -418,6 +420,11 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 				{
 					obj.setDoubleSided(true);
 				}
+				if (!pr_obj.isVisible())
+				{
+					Log.d("invisible","invisible");
+					obj.setVisible(false);
+				}
 				int ti = p.Textures.indexOf(pr_obj.getTexture());
 				if (textureInfos.get(ti) != null)
 				{
@@ -443,6 +450,8 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 						}
 						Log.d("videotexture", pr_obj.getVideoTexture());
 						obj_act.setVideo(pr_obj.getVideoTexture());
+						obj_act.setVideoText(pr_obj.getVideoText());
+
 						actions.add(obj_act);
 					}
 				}
@@ -459,8 +468,8 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 	{
 		float ts = System.nanoTime() / 1000000000;
 		float dt = ts - lastTrackTime;
-		Log.d("testworking", "timeout: " + dt);
-		if ((isTracking == true && dt >= 1.0f) || isTracking == false)
+
+		if ((isTracking == true && dt >= 0.8f) || isTracking == false)
 		{
 			isTracking = false;
 		}
@@ -476,9 +485,10 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 		}
 		else
 		{
-			camPos.x += (markPos.x - camPos.x) / 5;
-			camPos.z += (markPos.z - camPos.z) / 5;
+			camPos.x += (markPos.x - camPos.x) / 9;
+			camPos.z += (markPos.z - camPos.z) / 9;
 		}
+		phi=(phi+360)%360;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
@@ -522,14 +532,6 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 	{
 	}
 
-	public void onLoadComplete(SoundPool sP, int sampleId, int status)
-	{
-		if (status == 0)
-		{
-			mAudioPlayer.play(audioid, 1f, 1f, 1, 0, 0);
-		}
-	}
-
 	public void onPrepared(MediaPlayer mediaplayer)
 	{
 		mMediaPlayer.start();
@@ -546,8 +548,6 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 
 	public void onSurfaceDestroyed()
 	{
-		mMediaPlayer.stop();
-		mMediaPlayer.release();
 		super.onSurfaceDestroyed();
 	}
 
@@ -577,36 +577,50 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnLoadCompleteL
 
 		// mVideoTexture = new SurfaceTexture(textureid);
 
-		mMediaPlayer = new MediaPlayer();
-		mMediaPlayer.setOnPreparedListener(this);
-		mMediaPlayer.setOnBufferingUpdateListener(this);
-		mMediaPlayer.setOnCompletionListener(this);
-		mMediaPlayer.setOnErrorListener(this);
-		mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+		// mMediaPlayer = new MediaPlayer();
+		// mMediaPlayer.setOnPreparedListener(this);
+		// mMediaPlayer.setOnBufferingUpdateListener(this);
+		// mMediaPlayer.setOnCompletionListener(this);
+		// mMediaPlayer.setOnErrorListener(this);
+		// mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 		// mMediaPlayer.setSurface(new Surface(mVideoTexture));
 		// mMediaPlayer.setDisplay(videoPlayer.getHolder());
-		mMediaPlayer.setLooping(true);
+		// mMediaPlayer.setLooping(true);
 	}
 
 	public void stopAudio()
 	{
-		if (audioid != 0)
+		if (mMediaPlayer.isPlaying())
 		{
-			mAudioPlayer.stop(audioid);
-			mAudioPlayer.unload(audioid);
+			mMediaPlayer.stop();
 		}
+		/*
+		 * if (audioid != 0) { mAudioPlayer.stop(audioid);
+		 * mAudioPlayer.unload(audioid); }
+		 */
 	}
 
 	public void playAudio(String f)
 	{
 		stopAudio();
-		audioid = mAudioPlayer.load(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f, 1);
+		// audioid = mAudioPlayer.load(Environment.getExternalStorageDirectory()
+		// + "/" + dirn + "/" + f, 1);
+		try
+		{
+			mMediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f);
+			mMediaPlayer.prepareAsync();
+		}
+		catch (Exception e)
+		{
+
+		}
 
 	}
 
-	public void startVideo(BaseObject3D obj, String f)
+	public void startVideo(BaseObject3D obj, String f, String t)
 	{
 		videofile = f;
+		videotext = t;
 		isplayvideo = true;
 
 		// ((ImageTargets) ctx).startVideo(f);

@@ -9,7 +9,7 @@ public class oAction implements Cloneable
 	private ArrayList<String>	Objects;
 	private ArrayList<String>	Audios;
 	private ArrayList<String>	Videos;
-	private String				type;
+	private String				type			= "";
 	private int					currenttexture	= 0;
 
 	public oAction()

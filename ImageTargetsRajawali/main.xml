@@ -1,6 +1,6 @@
 <!--?xml version="1.0" encoding="UTF-8"?-->
 <venice version="0.1" startx="0" starty="0" startz="0" step="0.45" videoinfo="info about video recording">   
-	<project name="New Giardini - 13m3 + Ján Triaška" loading="Loading some noise. choose headphones..." description="Triaska" htmlfile="html/newgiardini.html">
+	<project name="New Giardini - 13m3 + Ján Triaška" loading="Loading some noise. choose headphones..." description="new_giardini" htmlfile="html/newgiardini.html">
 		<action name="changeTextureh" type="s" radius="0.5">
 	        <!-- used when type s, r -->
 	        <onenter>
@@ -21,16 +21,26 @@
 		        </playaudio>
 		    </oncross>
 		</action>
-		<action type="c" radius="10" name="playVideo">
+		<action type="s" radius="2" name="playVideo">
 		    <onenter>
 		        <startvideo></startvideo>
+		        <!-- 
+		        <showmodels>
+		            <models>tabula1_obj</models>
+		        </showmodels>
+		         -->
 		    </onenter>
 		    <onleave>
 		        <stopvideo></stopvideo>
+		        <!-- 
+		        <hidemodels>
+		            <models>tabula1_obj</models>
+		        </hidemodels>
+		         -->
 		    </onleave>
 		</action>
-		<object interactive="true" model="tabula1_obj" texture="tt_new_giardini.png" doublesided="1" action="playAudio"></object>
-		<object interactive="true" action="playVideo" model="02_NG-BB_obj" video="VuforiaSizzleReel_1.m4v" texture="NGBB.png" doublesided="1"></object>
+		<object interactive="true" visible="0" model="tabula1_obj" texture="tt_new_giardini.png" doublesided="1" action="playAudio"></object>
+		<object interactive="true" action="playVideo" model="02_NG-BB_obj" video="VuforiaSizzleReel_1.m4v" videotext="this is some video text" texture="NGBB.png" doublesided="1"></object>
 		<object interactive="true" action="changeTexture" model="02_NG-228_obj" texture="NG01.png" doublesided="0"></object>
 	</project>
 </venice>

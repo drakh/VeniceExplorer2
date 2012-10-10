@@ -15,6 +15,7 @@ public class ObjectAction implements Cloneable
 	private float				radius			= 0;
 	private String				current_model	= "";
 	private String				videofile		= "";
+	private String				videotext		= "";
 	private Number3D			model_center;
 	public oAction				onEnter;
 	public oAction				onLeave;
@@ -47,10 +48,15 @@ public class ObjectAction implements Cloneable
 		videofile = v;
 	}
 
+	public void setVideoText(String v)
+	{
+		videotext = v;
+	}
+
 	public void setCenter(Number3D c, Number3D cam)
 	{
 		model_center = c;
-		float dx = (-1*cam.x) - model_center.x;
+		float dx = (-1 * cam.x) - model_center.x;
 		float dz = cam.z - model_center.z;
 		// initial position inside or outside?
 		if (typ.contentEquals("c"))
@@ -168,7 +174,7 @@ public class ObjectAction implements Cloneable
 	public void checkAction(Number3D cam, ObjectsRenderer r)// camera position,
 															// renderer
 	{
-		float dx = (-1*cam.x) - model_center.x;
+		float dx = (-1 * cam.x) - model_center.x;
 		float dz = cam.z - model_center.z;
 		if (typ.contentEquals("b"))
 		{
@@ -267,9 +273,11 @@ public class ObjectAction implements Cloneable
 
 	public void showModels(oAction a, ObjectsRenderer r)
 	{
+		Log.d("run", "show models");
 		ArrayList<String> models = a.getObjects();
 		for (int i = 0; i < models.size(); i++)
 		{
+			Log.d("model",models.get(i));
 			BaseObject3D obj = r.getModelByName(models.get(i));
 			obj.setVisible(true);
 		}
@@ -295,12 +303,12 @@ public class ObjectAction implements Cloneable
 
 	public void startVideo(oAction a, ObjectsRenderer r)
 	{
-		Log.d("run","videostart");
+		Log.d("run", "videostart");
 		if (!videofile.contentEquals(""))
 		{
-			Log.d("run","do start video");
+			Log.d("run", "do start video");
 			BaseObject3D obj = r.getModelByName(current_model);
-			r.startVideo(obj, videofile);
+			r.startVideo(obj, videofile, videotext);
 		}
 	}
 

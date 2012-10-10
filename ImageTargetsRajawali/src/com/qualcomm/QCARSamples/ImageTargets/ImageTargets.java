@@ -103,6 +103,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 	private TextView				mInfoBtn;
 	private TextView				mCommentsBtn;
 	private TextView				mRecordBtn;
+	private TextView				mVideoText;
 	private CameraPreview			mCameraView;
 	private boolean					MenuVisible						= true;
 	private boolean					InfoVisible						= true;
@@ -470,6 +471,17 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mVideoView.setBackgroundColor(Color.BLACK);
 		mGUI.addView(mVideoView);
 
+		
+		mVideoText =new TextView(this);
+		mVideoText.setLayoutParams(new ViewGroup.LayoutParams(640, 100));
+		mVideoText.setX(20);
+		mVideoText.setY(mScreenHeight - 660+480);
+		mVideoText.setTextSize(24);
+		mVideoText.setGravity(Gravity.CENTER_HORIZONTAL);
+		mVideoText.bringToFront();
+		mVideoText.setShadowLayer(2f, 2f, 2f, Color.BLACK);
+		mVideoText.setPadding(10, 10, 0, 10);
+		mGUI.addView(mVideoText);
 		/* splash screen */
 		mSplashScreenImageResource = R.drawable.splash_screen_image_targets;
 		mQCARFlags = getInitializationFlags();
@@ -825,6 +837,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		HidePreview();
 		mProjView.setText("");
 		mLoadingView.setText("");
+		mVideoText.setText("");
 		mGUI.setVisibility(View.GONE);
 		mRenderer2.resetRenderer();
 	}
@@ -981,6 +994,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 				{
 					pl.setHtml(project.getAttribute("htmlfile"));
 				}
+				if (project.hasAttribute("description"))
+				{
+					pl.description = project.getAttribute("description");
+				}
 				if (project.hasAttribute("loading"))
 				{
 					pl.loadingText = project.getAttribute("loading");
@@ -1026,6 +1043,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 										{
 											Element acts_n = (Element) acts.item(acts_i);
 											String actn_name = acts.item(acts_i).getNodeName();
+											Log.d("onenter", actn_name);
 											oAction obja = new oAction();
 											obja.setType(actn_name);
 											ParseAction(obja, actn_name, acts_n);
@@ -1044,6 +1062,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 										{
 											Element acts_n = (Element) acts.item(acts_i);
 											String actn_name = acts.item(acts_i).getNodeName();
+											Log.d("onleave", actn_name);
 											oAction obja = new oAction();
 											obja.setType(actn_name);
 											ParseAction(obja, actn_name, acts_n);
@@ -1068,6 +1087,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 								{
 									Element acts_n = (Element) acts.item(acts_i);
 									String actn_name = acts.item(acts_i).getNodeName();
+									Log.d("oncross", actn_name);
 									oAction obja = new oAction();
 									obja.setType(actn_name);
 									ParseAction(obja, actn_name, acts_n);
@@ -1116,6 +1136,10 @@ public class ImageTargets extends Activity implements SensorEventListener
 					{
 						po.setVideoTexture(obj.getAttribute("video"));
 					}
+					if (obj.hasAttribute("videotext"))
+					{
+						po.setVideoText(obj.getAttribute("videotext"));
+					}
 					if (obj.hasAttribute("interactive"))
 					{
 						po.setInteractive(obj.getAttribute("interactive"));
@@ -1142,6 +1166,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 
 	public void ParseAction(oAction obja, String actn_name, Element acts_n)
 	{
+		Log.d("xml", actn_name);
 		if (actn_name.contentEquals("changetexture"))
 		{
 			NodeList texn = acts_n.getElementsByTagName("texture");
@@ -1262,7 +1287,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		float omegaMagnitude = (float) Math.sqrt(event.values[0] * event.values[0] + event.values[1] * event.values[1] + event.values[2] * event.values[2]);
 		float prevAcc = accVal;
 		accVal += (omegaMagnitude - accVal) / 2.5;
-		if (Math.abs(prevAcc - accVal) >= 0.02)
+		if (Math.abs(prevAcc - accVal) >= 0.015)
 		{
 			moving = true;
 		}
@@ -1511,7 +1536,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 				if (mRenderer2.doLoad == false)
 				{
 					int cp = mRenderer2.curProj;
-					projname = vProjects.get(cp).getName();
+					projname = vProjects.get(cp).getDesc();
 				}
 			}
 			String dt = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date());
@@ -1648,6 +1673,7 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mVideoView.setVideoPath(Environment.getExternalStorageDirectory() + "/" + dirname + "/" + mRenderer2.videofile);
 		playing_video = true;
 		mVideoView.start();
+		mVideoText.setText(mRenderer2.videotext);
 	}
 
 	public void stopVideo()
@@ -1663,5 +1689,6 @@ public class ImageTargets extends Activity implements SensorEventListener
 		mVideoView.setZOrderOnTop(false);
 		mVideoView.setVisibility(View.GONE);
 		playing_video = false;
+		mVideoText.setText("");
 	}
 }
