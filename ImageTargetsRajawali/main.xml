@@ -21,14 +21,14 @@
 		        </playaudio>
 		    </oncross>
 		</action>
-		<action name="playAudio2" type="p">
+		<action name="playAudio2" type="s" radius="8">
 		    <oncross>
 		        <playaudio>
 		            <file>19_AT_3.wav</file>
 		        </playaudio>
 		    </oncross>
 		</action>
-		<action type="s" radius="2" name="playVideo">
+		<action type="s" radius="8" name="playVideo">
 		    <onenter>
 		        <showmodels>
 		            <models>tabula1_obj</models>
