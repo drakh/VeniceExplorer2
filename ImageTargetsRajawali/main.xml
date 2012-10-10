@@ -21,25 +21,27 @@
 		        </playaudio>
 		    </oncross>
 		</action>
+		<action name="playAudio2" type="p">
+		    <oncross>
+		        <playaudio>
+		            <file>19_AT_3.wav</file>
+		        </playaudio>
+		    </oncross>
+		</action>
 		<action type="s" radius="2" name="playVideo">
 		    <onenter>
-		        <startvideo></startvideo>
-		        <!-- 
 		        <showmodels>
 		            <models>tabula1_obj</models>
 		        </showmodels>
-		         -->
 		    </onenter>
 		    <onleave>
-		        <stopvideo></stopvideo>
-		        <!-- 
 		        <hidemodels>
 		            <models>tabula1_obj</models>
 		        </hidemodels>
-		         -->
 		    </onleave>
 		</action>
 		<object interactive="true" visible="0" model="tabula1_obj" texture="tt_new_giardini.png" doublesided="1" action="playAudio"></object>
+		<object interactive="true" model="02_NG-BB_obj" texture="NGBB.png" doublesided="1" action="playAudio2"></object>
 		<object interactive="true" action="playVideo" model="02_NG-BB_obj" video="VuforiaSizzleReel_1.m4v" videotext="this is some video text" texture="NGBB.png" doublesided="1"></object>
 		<object interactive="true" action="changeTexture" model="02_NG-228_obj" texture="NG01.png" doublesided="0"></object>
 	</project>

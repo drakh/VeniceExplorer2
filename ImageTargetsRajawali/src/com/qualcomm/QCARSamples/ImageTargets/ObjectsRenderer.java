@@ -469,7 +469,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		float ts = System.nanoTime() / 1000000000;
 		float dt = ts - lastTrackTime;
 
-		if ((isTracking == true && dt >= 0.8f) || isTracking == false)
+		if ((isTracking == true && dt > 1.0f) || isTracking == false)
 		{
 			isTracking = false;
 		}
@@ -488,7 +488,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 			camPos.x += (markPos.x - camPos.x) / 9;
 			camPos.z += (markPos.z - camPos.z) / 9;
 		}
-		phi=(phi+360)%360;
+		//phi=(phi+360)%360;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
 		mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y), (camPos.z + la.z)));
@@ -534,7 +534,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 
 	public void onPrepared(MediaPlayer mediaplayer)
 	{
-		mMediaPlayer.start();
+		//mMediaPlayer.start();
 	}
 
 	public void onCompletion(MediaPlayer arg0)
@@ -607,8 +607,11 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		// + "/" + dirn + "/" + f, 1);
 		try
 		{
+			mMediaPlayer.reset();
 			mMediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/" + dirn + "/" + f);
-			mMediaPlayer.prepareAsync();
+			//mMediaPlayer.prepareAsync();
+			mMediaPlayer.prepare();
+			mMediaPlayer.start();
 		}
 		catch (Exception e)
 		{
