@@ -51,6 +51,7 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 	public boolean					izLoaded		= true;
 	public boolean					doLoad			= true;
 	public boolean					doReset			= false;
+	private boolean					doTracking		= true;
 	private boolean					actions_enabled	= true;
 	public int						curProj			= 0;
 	private int						audioid			= 0;
@@ -178,81 +179,87 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 
 	public void setPosition(String n, float[] CM)
 	{
-		isTracking = true;
-		float c_phi = 0f;
-		float c_theta = 0f;
-		Number3D c_camPos = new Number3D();
-		float curTime = System.nanoTime() * NS2S;
-		if (n.contentEquals("marker1"))
+		if (doTracking == true)
 		{
-			mm = mm1;
-		}
-		else if (n.contentEquals("marker2"))
-		{
-			mm = mm2;
-		}
-		else if (n.contentEquals("marker3"))
-		{
-			mm = mm3;
-		}
-		else if (n.contentEquals("marker4"))
-		{
-			mm = mm4;
-		}
-		Matrix.invertM(mInvMatrix, 0, mm, 0);
-		Matrix.multiplyMM(mCamMatrix, 0, mInvMatrix, 0, CM, 0);
-		Number3D a_x = new Number3D(mCamMatrix[0], mCamMatrix[1], mCamMatrix[2]);
-		Number3D a_y = new Number3D(mCamMatrix[4], mCamMatrix[5], mCamMatrix[6]);
-		Number3D a_z = new Number3D(mCamMatrix[8], mCamMatrix[9], mCamMatrix[10]);
-		q.fromAxes(a_x, a_y, a_z);
-		float[] rm = new float[16];
-		q.toRotationMatrix(rm);
-		float pitch = Math.round(Math.toDegrees(q.getPitch(false)));
-		float yaw = Math.round(Math.toDegrees(q.getYaw(false)));
-		float roll = Math.round(Math.toDegrees(q.getRoll(false)));
-		if (n.contentEquals("marker4"))
-		{
-			c_phi = -1 * yaw;
-			c_theta = 180 + pitch;
-			c_camPos.x = mCamMatrix[12];
-			c_camPos.z = -1 * mCamMatrix[14];
-		}
-		else if (n.contentEquals("marker2") || n.contentEquals("marker1"))
-		{
-			c_phi = -1 * yaw + 180;
-			c_theta = 180 - pitch;
-			c_camPos.x = -1 * mCamMatrix[12];
-			c_camPos.z = mCamMatrix[14];
-		}
-		else if (n.contentEquals("marker3"))
-		{
-			c_phi = -1 * yaw - 90;
-			c_theta = 180 + pitch;
-			c_camPos.x = mCamMatrix[14];
-			c_camPos.z = mCamMatrix[12];
-		}
-		float dt = (float) (curTime - lastTrackTime);
+			Log.d("tracking","dotrack");
+			isTracking = true;
+			float c_phi = 0f;
+			float c_theta = 0f;
+			Number3D c_camPos = new Number3D();
+			float curTime = System.nanoTime() * NS2S;
+			if (n.contentEquals("marker1"))
+			{
+				mm = mm1;
+			}
+			else if (n.contentEquals("marker2"))
+			{
+				mm = mm2;
+			}
+			else if (n.contentEquals("marker3"))
+			{
+				mm = mm3;
+			}
+			else if (n.contentEquals("marker4"))
+			{
+				mm = mm4;
+			}
+			Matrix.invertM(mInvMatrix, 0, mm, 0);
+			Matrix.multiplyMM(mCamMatrix, 0, mInvMatrix, 0, CM, 0);
+			Number3D a_x = new Number3D(mCamMatrix[0], mCamMatrix[1], mCamMatrix[2]);
+			Number3D a_y = new Number3D(mCamMatrix[4], mCamMatrix[5], mCamMatrix[6]);
+			Number3D a_z = new Number3D(mCamMatrix[8], mCamMatrix[9], mCamMatrix[10]);
+			q.fromAxes(a_x, a_y, a_z);
+			float[] rm = new float[16];
+			q.toRotationMatrix(rm);
+			float pitch = Math.round(Math.toDegrees(q.getPitch(false)));
+			float yaw = Math.round(Math.toDegrees(q.getYaw(false)));
+			float roll = Math.round(Math.toDegrees(q.getRoll(false)));
+			if (n.contentEquals("marker4"))
+			{
+				c_phi = -1 * yaw;
+				c_theta = 180 + pitch;
+				c_camPos.x = mCamMatrix[12];
+				c_camPos.z = -1 * mCamMatrix[14];
+			}
+			else if (n.contentEquals("marker2") || n.contentEquals("marker1"))
+			{
+				c_phi = -1 * yaw + 180;
+				c_theta = 180 - pitch;
+				c_camPos.x = -1 * mCamMatrix[12];
+				c_camPos.z = mCamMatrix[14];
+			}
+			else if (n.contentEquals("marker3"))
+			{
+				c_phi = -1 * yaw - 90;
+				c_theta = 180 + pitch;
+				c_camPos.x = mCamMatrix[14];
+				c_camPos.z = mCamMatrix[12];
+			}
+			float dt = (float) (curTime - lastTrackTime);
 
-		lastTrackTime = curTime;
-		c_theta = c_theta + 90f;
-		c_phi = c_phi % 360;
-		c_theta = c_theta % 360;
-		phi += (c_phi - phi) / 4;
+			lastTrackTime = curTime;
+			c_theta = c_theta + 90f;
+			c_phi = c_phi % 360;
+			c_theta = c_theta % 360;
+			phi += (c_phi - phi) / 4;
 
-		// theta += (c_theta - theta) / 4;
-		// theta=c_theta;
-		// phi=c_phi;
-		markPos.x = c_camPos.x;
-		markPos.z = c_camPos.z;
-		stepPos.x = c_camPos.x;
-		stepPos.z = c_camPos.z;
-		// smoothedValue += timeSinceLastUpdate * (newValue - smoothedValue) /
-		// smoothing
-		// theta = theta + 90f;
-		// Number3D la = SphericalToCartesian(phi, theta, 1);
-		// mCamera.setPosition(camPos);
-		// mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y + la.y),
-		// (camPos.z + la.z)));
+			// theta += (c_theta - theta) / 4;
+			// theta=c_theta;
+			// phi=c_phi;
+			markPos.x = c_camPos.x;
+			markPos.z = c_camPos.z;
+			stepPos.x = c_camPos.x;
+			stepPos.z = c_camPos.z;
+			// smoothedValue += timeSinceLastUpdate * (newValue - smoothedValue)
+			// /
+			// smoothing
+			// theta = theta + 90f;
+			// Number3D la = SphericalToCartesian(phi, theta, 1);
+			// mCamera.setPosition(camPos);
+			// mCamera.setLookAt(new Number3D((camPos.x + la.x), (camPos.y +
+			// la.y),
+			// (camPos.z + la.z)));
+		}
 	}
 
 	public Number3D SphericalToCartesian(float phi, float theta, float r)
@@ -354,11 +361,13 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		curProj = 0;
 		izLoaded = true;
 		doLoad = true;
+		doTracking = true;
 	}
 
 	protected void loadScene()
 	{
 		LoadObjects(ps.get(curProj));
+		doTracking = true;
 	}
 
 	public void setObjs(ArrayList<ProjectLevel> p)
@@ -470,8 +479,15 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 	{
 		float ts = System.nanoTime() * NS2S;
 		float dt = (ts - lastTrackTime);
-		Log.d("track diff", "diff: " + dt);
-		if ((isTracking == true && dt >= 0.5f) || isTracking == false)
+		if (doTracking == true)
+		{
+			if ((isTracking == true && dt >= 0.5f))
+			{
+				isTracking = false;
+				doTracking = false;
+			}
+		}
+		else
 		{
 			isTracking = false;
 		}
@@ -489,9 +505,15 @@ public class ObjectsRenderer extends RajawaliRenderer implements OnPreparedListe
 		{
 			camPos.x += (markPos.x - camPos.x) / 9;
 			camPos.z += (markPos.z - camPos.z) / 9;
-			stepPos.x=camPos.x;
-			stepPos.z=camPos.z;
+			stepPos.x = camPos.x;
+			stepPos.z = camPos.z;
 		}
+		// check bounds of camera
+		if (camPos.z > 5.386f) camPos.z = 5.386f;
+		if (camPos.z < -5.386f) camPos.z = -5.386f;
+		if (camPos.x > 8.716f) camPos.x = 8.716f;
+		if (camPos.x < -8.716f) camPos.x = -8.716f;
+
 		// phi=(phi+360)%360;
 		Number3D la = SphericalToCartesian(phi, theta, 1);
 		mCamera.setPosition(camPos);
